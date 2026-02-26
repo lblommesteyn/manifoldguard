@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manifoldguard"
+version = "0.1.0"
+description = "Matrix-factorization benchmark completion with OOD risk and conformal uncertainty."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Hassan Al-Nasih" },
+    { name = "Ronit Longia" },
+    { name = "Luke Blommesteyn" },
+    { name = "Nathan Chiu" },
+    { name = "Gary Yi" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["matrix-factorization", "ood-detection", "conformal-prediction", "benchmarking", "llm-evaluation"]
+dependencies = [
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+    "torch>=2.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/manifoldguard"
+Repository = "https://github.com/your-org/manifoldguard"
+Issues = "https://github.com/your-org/manifoldguard/issues"
+
+[tool.setuptools.packages.find]
+include = ["manifoldguard*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
