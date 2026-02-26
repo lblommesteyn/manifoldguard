@@ -10,11 +10,19 @@ if str(REPO_ROOT) not in sys.path:
 
 from manifoldguard.data import generate_synthetic_scores, load_score_csv
 from manifoldguard.evaluation import evaluate_experiment
+from manifoldguard.lm_eval import load_lm_eval_results_dir
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run manifoldguard experiments.")
-    parser.add_argument("--csv", type=Path, default=None, help="Path to score matrix CSV.")
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--csv", type=Path, default=None, help="Path to score matrix CSV.")
+    source.add_argument(
+        "--lm-eval-dir",
+        type=Path,
+        default=None,
+        help="Directory with lm-eval-harness JSON outputs (recursive).",
+    )
     parser.add_argument("--rank", type=int, default=4, help="MF latent rank.")
     parser.add_argument("--ensemble-size", type=int, default=5, help="Number of MF models in ensemble.")
     parser.add_argument("--epochs", type=int, default=700, help="Training epochs per MF model.")
@@ -65,6 +73,8 @@ def main() -> None:
     args = parse_args()
     if args.csv is not None:
         score_matrix = load_score_csv(args.csv)
+    elif args.lm_eval_dir is not None:
+        score_matrix = load_lm_eval_results_dir(args.lm_eval_dir)
     else:
         score_matrix = generate_synthetic_scores(
             num_models=args.synthetic_models,

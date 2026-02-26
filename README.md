@@ -69,11 +69,19 @@ To run on your own CSV (rows = models, cols = benchmarks, first row/col may be n
 python scripts/run_experiments.py --csv path/to/scores.csv
 ```
 
+To run directly from lm-eval-harness JSON outputs (no CSV conversion):
+
+```bash
+python scripts/run_experiments.py --lm-eval-dir path/to/lm_eval_outputs
+```
+
 ## Key options
 
 ```
 --rank INT               MF latent rank (default 4)
 --ensemble-size INT      ensemble members (default 5)
+--csv PATH               wide score matrix in CSV format
+--lm-eval-dir PATH       lm-eval JSON directory (recursive)
 --observed-fraction F    fraction of benchmarks revealed at inference (default 0.35)
 --model-test-fraction F  fraction of models held out from MF training (default 0.25)
 --alpha F                conformal miscoverage level, 1-alpha = target coverage (default 0.1)

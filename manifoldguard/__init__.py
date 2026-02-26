@@ -6,6 +6,7 @@ from manifoldguard.ensemble import EnsembleMF, NewModelPrediction, predict_new_m
 from manifoldguard.episodes import Episode, simulate_new_model_episodes
 from manifoldguard.evaluation import EpisodeResult, ExperimentMetrics, evaluate_experiment
 from manifoldguard.inference import infer_latent_u_ridge, loo_observed_residuals, predict_scores
+from manifoldguard.lm_eval import load_lm_eval_results_dir
 from manifoldguard.mf import MFModel, reconstruct, train_matrix_factorization
 from manifoldguard.ood import (
     LatentDistribution,
@@ -32,6 +33,7 @@ __all__ = [
     "infer_latent_u_ridge",
     "interval_bounds",
     "load_score_csv",
+    "load_lm_eval_results_dir",
     "loo_observed_residuals",
     "mahalanobis_distance",
     "observation_coverage_features",
