@@ -1,4 +1,4 @@
-"""Run a cold-start demo on a fixed partial benchmark request.
+"""Run a cold-start demo on a fixed or auto-sampled partial benchmark request.
 
 Usage:
     python scripts/run_demo.py
@@ -20,12 +20,13 @@ if str(REPO_ROOT) not in sys.path:
 
 from manifoldguard._utils import quantile_higher as _quantile_higher
 from manifoldguard.conformal import split_conformal_quantile
-from manifoldguard.data import load_score_csv
+from manifoldguard.data import ScoreMatrix, load_score_csv
 from manifoldguard.ensemble import EnsembleMF, predict_new_model, train_ensemble
-from manifoldguard.episodes import Episode, simulate_new_model_episodes
-from manifoldguard.evaluation import FEATURE_NAMES, _evaluate_episode, _grouped_calibration_test_indices
+from manifoldguard.episodes import simulate_new_model_episodes
+from manifoldguard.evaluation import _evaluate_episode, _grouped_calibration_test_indices
 from manifoldguard.ood import observation_coverage_features, residual_features, summary_variance_features
 from manifoldguard.inference import loo_observed_residuals
+from manifoldguard.lm_eval import load_lm_eval_results_dir
 from manifoldguard.splits import infer_model_family
 
 DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores.csv"
@@ -35,7 +36,23 @@ DEFAULT_OUTPUT = REPO_ROOT / "results" / "demo" / "demo_report.json"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the ManifoldGuard demo path.")
-    parser.add_argument("--request", type=Path, default=DEFAULT_REQUEST, help="Path to demo request JSON.")
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--csv", type=Path, default=None, help="Optional score matrix CSV to demo on.")
+    source.add_argument(
+        "--lm-eval-dir",
+        type=Path,
+        default=None,
+        help="Optional lm-eval-harness JSON directory to demo on.",
+    )
+    parser.add_argument("--request", type=Path, default=None, help="Optional demo request JSON.")
+    parser.add_argument("--model-name", type=str, default=None, help="Model to sample a demo episode from.")
+    parser.add_argument(
+        "--observed-fraction",
+        type=float,
+        default=0.35,
+        help="Observed benchmark fraction for auto-sampled demo episodes.",
+    )
+    parser.add_argument("--show-all", action="store_true", help="Print all hidden-benchmark predictions.")
     parser.add_argument("--output-json", type=Path, default=DEFAULT_OUTPUT, help="Path to write demo report JSON.")
     parser.add_argument("--rank", type=int, default=3, help="MF latent rank.")
     parser.add_argument("--ensemble-size", type=int, default=5, help="Ensemble size.")
@@ -47,8 +64,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    request = _load_request(args.request)
-    score_matrix = load_score_csv(DATASET)
+    score_matrix = _load_score_matrix(args)
+    request = _resolve_request(args, score_matrix)
 
     benchmark_to_idx = {name: idx for idx, name in enumerate(score_matrix.benchmark_names)}
     try:
@@ -169,10 +186,31 @@ def main() -> None:
         "decision_rationale": rationale,
     }
 
-    _print_report(report)
+    _print_report(report, show_all=args.show_all)
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"\nReport written to {args.output_json}")
+
+
+def _load_score_matrix(args: argparse.Namespace) -> ScoreMatrix:
+    if args.csv is not None:
+        return load_score_csv(args.csv)
+    if args.lm_eval_dir is not None:
+        return load_lm_eval_results_dir(args.lm_eval_dir)
+    return load_score_csv(DATASET)
+
+
+def _resolve_request(args: argparse.Namespace, score_matrix: ScoreMatrix) -> dict[str, object]:
+    if args.model_name is not None:
+        return _sample_request_from_model(
+            score_matrix=score_matrix,
+            model_name=args.model_name,
+            observed_fraction=args.observed_fraction,
+            seed=args.seed,
+        )
+
+    request_path = args.request or DEFAULT_REQUEST
+    return _load_request(request_path)
 
 
 def _load_request(path: Path) -> dict[str, object]:
@@ -185,6 +223,38 @@ def _load_request(path: Path) -> dict[str, object]:
         raise ValueError("Demo request must include a non-empty model_name.")
     if not isinstance(observed_scores, dict) or not observed_scores:
         raise ValueError("Demo request must include observed_scores.")
+    return {"model_name": model_name, "observed_scores": observed_scores}
+
+
+def _sample_request_from_model(
+    score_matrix: ScoreMatrix,
+    model_name: str,
+    observed_fraction: float,
+    seed: int,
+) -> dict[str, object]:
+    if not 0.0 < observed_fraction < 1.0:
+        raise ValueError("observed_fraction must be in (0, 1).")
+
+    try:
+        target_idx = score_matrix.model_names.index(model_name)
+    except ValueError as exc:
+        raise ValueError(f"Unknown model for demo sampling: {model_name}") from exc
+
+    target_row = score_matrix.values[target_idx]
+    observed_full = np.flatnonzero(~np.isnan(target_row))
+    if observed_full.size < 3:
+        raise ValueError("Auto-sampled demo requires at least 3 observed benchmarks for the target model.")
+
+    max_observed = observed_full.size - 1
+    desired_observed = int(np.floor(observed_fraction * observed_full.size))
+    observed_count = int(np.clip(desired_observed, 2, max_observed))
+
+    rng = np.random.default_rng(seed)
+    observed_indices = np.sort(rng.choice(observed_full, size=observed_count, replace=False))
+    observed_scores = {
+        score_matrix.benchmark_names[idx]: float(target_row[idx])
+        for idx in observed_indices.tolist()
+    }
     return {"model_name": model_name, "observed_scores": observed_scores}
 
 
@@ -362,7 +432,7 @@ def _risk_label(risk_probability: float) -> str:
     return "high"
 
 
-def _print_report(report: dict[str, object]) -> None:
+def _print_report(report: dict[str, object], show_all: bool = False, print_limit: int = 10) -> None:
     print(f"Model:     {report['model_name']}")
     print(f"Family:    {report['model_family']}")
     print("Observed:")
@@ -370,7 +440,11 @@ def _print_report(report: dict[str, object]) -> None:
         print(f"  {benchmark:<14} {float(value):.4f}")
 
     print("\nPredicted hidden benchmarks:")
-    for row in report["hidden_predictions"]:
+    hidden_predictions = list(report["hidden_predictions"])
+    for idx, row in enumerate(hidden_predictions):
+        if not show_all and idx >= print_limit:
+            print(f"  ... and {len(hidden_predictions) - print_limit} more")
+            break
         print(
             f"  {row['benchmark']:<14} pred={row['predicted_score']:.4f}  "
             f"interval=[{row['interval_lower']:.4f}, {row['interval_upper']:.4f}]  "

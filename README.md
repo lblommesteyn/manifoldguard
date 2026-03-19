@@ -40,6 +40,16 @@ python scripts/run_demo.py
 
 That command reads [examples/demo_request.json](examples/demo_request.json) and writes a human-readable report plus JSON output to [results/demo/demo_report.json](results/demo/demo_report.json).
 
+You can also auto-sample a partial evaluation episode from a model in a CSV or lm-eval directory:
+
+```bash
+python scripts/run_demo.py \
+  --csv datasets/lm_eval_real/scores.csv \
+  --model-name "meta-llama/Meta-Llama-3-70B-Instruct" \
+  --observed-fraction 0.5 \
+  --show-all
+```
+
 ## Real-data workflow
 
 The repo includes a fixed real dataset at [datasets/lm_eval_real/scores.csv](datasets/lm_eval_real/scores.csv). The main experiment scripts are:
@@ -60,6 +70,15 @@ These produce reusable CSV artifacts under `results/`:
 - `results/family_split/` for the tougher family-holdout OOD setting
 - `results/cost_savings/` for risk-threshold versus benchmarks-avoided tradeoffs
 - `results/demo/` for the sample partial-score demo report
+
+For a wider real matrix with subtask-level columns, build [datasets/lm_eval_real/scores_expanded.csv](datasets/lm_eval_real/scores_expanded.csv):
+
+```bash
+pip install huggingface_hub
+python scripts/build_expanded_dataset.py
+```
+
+That expanded dataset currently contains 61 models x 44 benchmark columns and is documented in [data_note_expanded.md](datasets/lm_eval_real/data_note_expanded.md).
 
 ## Generic experiment runner
 
