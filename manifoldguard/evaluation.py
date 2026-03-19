@@ -65,6 +65,7 @@ def evaluate_experiment(
     seed: int = 0,
     alpha: float = 0.1,
     device: str | None = None,
+    feature_columns: list[int] | None = None,
 ) -> ExperimentMetrics:
     """Run completion + failure-risk + conformal evaluation end-to-end.
 
@@ -117,6 +118,8 @@ def evaluate_experiment(
     failure_threshold = float(_quantile_higher(hidden_maes, 0.8))
     failure_labels = (hidden_maes >= failure_threshold).astype(int)
     feature_matrix = np.vstack([r.features for r in episode_results])
+    if feature_columns is not None:
+        feature_matrix = feature_matrix[:, feature_columns]
     failure_auc = _fit_failure_auc(feature_matrix, failure_labels, episode_groups, seed=seed)
 
     conformal_coverage, conformal_quantile = _evaluate_conformal(

@@ -1,0 +1,15 @@
+ablation,setting,completion_mae,failure_auc,conformal_coverage
+rank,2,0.0786,0.4229,0.9052
+rank,3,0.0653,0.6413,0.8787
+rank,4,0.0688,0.7144,0.9078
+rank,5,0.0741,0.6799,0.9078
+ensemble_size,1,0.0653,0.6413,0.8787
+ensemble_size,3,0.0653,0.6413,0.8787
+ensemble_size,5,0.0653,0.6413,0.8787
+ensemble_size,7,0.0653,0.6413,0.8787
+observed_fraction,0.3,0.0930,0.6041,0.9096
+observed_fraction,0.5,0.0653,0.6413,0.8787
+observed_fraction,0.7,0.0494,0.7390,0.8492
+feature_subset,all_features,0.0653,0.6413,0.8787
+feature_subset,geometry_only,0.0653,0.5449,0.8787
+feature_subset,all_minus_geometry,0.0653,0.5716,0.8787
