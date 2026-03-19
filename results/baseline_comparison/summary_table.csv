@@ -1,0 +1,6 @@
+method,completion_mae_mean,completion_mae_std,failure_auc_mean,failure_auc_std,conformal_coverage_mean,conformal_coverage_std
+Mean fill,0.093007,0.010956,,,,
+Nearest neighbor,0.068333,0.014935,,,,
+MF only,0.068874,0.009973,,,,
+MF + failure detection,0.068874,0.009973,0.655450,0.115821,,
+ManifoldGuard (full),0.068874,0.009973,0.655450,0.115821,0.906986,0.082029
