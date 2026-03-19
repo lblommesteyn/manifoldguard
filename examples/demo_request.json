@@ -1,0 +1,8 @@
+{
+  "model_name": "meta-llama/Meta-Llama-3-70B-Instruct",
+  "observed_scores": {
+    "BBH": 0.652491,
+    "IFEval": 0.845324,
+    "MATH-Hard": 0.244713
+  }
+}

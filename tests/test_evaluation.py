@@ -2,7 +2,12 @@ import numpy as np
 import pytest
 
 from manifoldguard.data import generate_synthetic_scores
-from manifoldguard.evaluation import _fit_failure_auc, _grouped_calibration_test_indices
+from manifoldguard.evaluation import (
+    _fit_failure_auc,
+    _grouped_calibration_test_indices,
+    _grouped_failure_probabilities,
+    evaluate_experiment_split,
+)
 
 
 def test_grouped_calibration_split_has_no_group_overlap() -> None:
@@ -47,6 +52,25 @@ def test_fit_failure_auc_grouped_cv_runs() -> None:
     assert 0.5 <= auc <= 1.0
 
 
+def test_grouped_failure_probabilities_return_out_of_fold_scores() -> None:
+    rng = np.random.default_rng(1)
+    groups = np.repeat(np.arange(10), 3)
+    labels = np.repeat([1, 0, 1, 0, 1, 0, 1, 0, 1, 0], 3)
+    features = np.column_stack(
+        [
+            labels + rng.normal(scale=0.1, size=labels.size),
+            (1 - labels) + rng.normal(scale=0.1, size=labels.size),
+        ]
+    )
+
+    probabilities = _grouped_failure_probabilities(features, labels, groups, seed=9)
+
+    assert probabilities.shape == labels.shape
+    assert np.isfinite(probabilities).sum() >= labels.size // 2
+    assert np.nanmin(probabilities) >= 0.0
+    assert np.nanmax(probabilities) <= 1.0
+
+
 def test_evaluate_experiment_accepts_feature_subsets() -> None:
     score_matrix = generate_synthetic_scores(
         num_models=20,
@@ -73,6 +97,33 @@ def test_evaluate_experiment_accepts_feature_subsets() -> None:
 
     assert np.isfinite(metrics.completion_mae)
     assert np.isfinite(metrics.conformal_coverage)
+    assert metrics.num_episodes > 0
+
+
+def test_evaluate_experiment_split_runs_with_explicit_indices() -> None:
+    score_matrix = generate_synthetic_scores(
+        num_models=20,
+        num_benchmarks=6,
+        rank=2,
+        noise_std=0.05,
+        missing_rate=0.1,
+        seed=2,
+    )
+
+    metrics = evaluate_experiment_split(
+        matrix=score_matrix.values,
+        train_indices=np.arange(0, 10),
+        test_indices=np.arange(10, 20),
+        rank=2,
+        ensemble_size=1,
+        epochs=10,
+        episodes_per_model=3,
+        observed_fraction=0.5,
+        seed=5,
+    )
+
+    assert metrics.num_train_models == 10
+    assert metrics.num_test_models == 10
     assert metrics.num_episodes > 0
 
 

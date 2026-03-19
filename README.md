@@ -1,96 +1,135 @@
 # manifoldguard
 
-`manifoldguard` predicts missing benchmark scores for new LLMs/models and flags when those predictions are likely to be unreliable before you pay to run the full evaluation suite.
+`manifoldguard` predicts missing benchmark scores for a partially evaluated model and estimates when those predictions should not be trusted yet.
+
+The project is aimed at the practical question behind expensive LLM evaluation: if you have only run a few benchmarks, can you forecast the rest of the suite, estimate the risk of being wrong, and decide whether to stop or keep evaluating?
+
+## Why this matters
+
+Running a full benchmark suite across many models is slow and expensive. `manifoldguard` tries to reduce that burden by:
+
+- completing missing benchmark scores with low-rank matrix factorization,
+- flagging high-risk predictions before you trust them,
+- wrapping predictions in conformal intervals, and
+- giving a simple recommendation about which benchmark to run next.
 
 ## What it does
 
-Given a partially observed model x benchmark score matrix (rows = models, cols = benchmarks, cells = scores with NaNs allowed):
+Given a model x benchmark score matrix with NaNs allowed:
 
-1. **Matrix completion** - trains a low-rank factorization `U V^T` (PyTorch, observed entries only) to fill missing cells.
-2. **New-model inference** - given a handful of observed scores for a brand-new model, infers its latent vector `u` via closed-form ridge regression and predicts all missing benchmarks.
-3. **Failure detection** - computes OOD risk features and fits a logistic regression to predict whether completion error will be high (top-20% MAE), before running the hidden benchmarks.
-4. **Conformal intervals** - wraps every prediction in a distribution-free `[pred +/- q]` interval guaranteed to cover the true score with >= 90% probability.
+1. Matrix completion: train a low-rank factorization `U V^T` on observed entries only.
+2. New-model inference: infer a latent vector for a partially observed model with ridge regression.
+3. Failure detection: use OOD features to estimate when hidden-score predictions are likely to fail.
+4. Conformal intervals: attach distribution-free uncertainty intervals to each hidden prediction.
+5. Decision support: recommend whether to stop, continue, or run a specific next benchmark.
 
-## Architecture
+## Quickstart
 
+Install the package and run the tests:
+
+```bash
+pip install -e ".[dev]"
+pytest
 ```
+
+Run the cold-start demo:
+
+```bash
+python scripts/run_demo.py
+```
+
+That command reads [examples/demo_request.json](examples/demo_request.json) and writes a human-readable report plus JSON output to [results/demo/demo_report.json](results/demo/demo_report.json).
+
+## Real-data workflow
+
+The repo includes a fixed real dataset at [datasets/lm_eval_real/scores.csv](datasets/lm_eval_real/scores.csv). The main experiment scripts are:
+
+```bash
+python scripts/run_real_data_benchmarks.py
+python scripts/run_baseline_comparison.py
+python scripts/run_ablations.py
+python scripts/run_family_split_benchmark.py
+python scripts/run_cost_savings_analysis.py
+```
+
+These produce reusable CSV artifacts under `results/`:
+
+- `results/real_data_benchmark/` for the main random-split benchmark
+- `results/baseline_comparison/` for mean fill / nearest neighbor / MF comparisons
+- `results/ablations/` for rank, ensemble size, observed fraction, and feature subset ablations
+- `results/family_split/` for the tougher family-holdout OOD setting
+- `results/cost_savings/` for risk-threshold versus benchmarks-avoided tradeoffs
+- `results/demo/` for the sample partial-score demo report
+
+## Generic experiment runner
+
+For synthetic data, CSV matrices, or lm-eval JSON directories:
+
+```bash
+python scripts/run_experiments.py
+python scripts/run_experiments.py --csv datasets/lm_eval_real/scores.csv
+python scripts/run_experiments.py --lm-eval-dir path/to/lm_eval_outputs
+```
+
+The runner can also export reusable metrics directly:
+
+```bash
+python scripts/run_experiments.py \
+  --csv datasets/lm_eval_real/scores.csv \
+  --output-json results/exports/example_metrics.json \
+  --output-csv results/exports/example_metrics.csv
+```
+
+## Current real-data artifacts
+
+The repo currently ships:
+
+- a curated real lm-eval style dataset with model and task coverage notes,
+- random-split benchmark results across multiple seeds,
+- baseline comparison tables,
+- ablation tables,
+- a stronger family-holdout benchmark,
+- a risk-threshold cost-savings table, and
+- a one-command demo report for a partially observed model.
+
+## Repository layout
+
+```text
 manifoldguard/
-  _utils.py       shared numeric helpers (quantile_higher)
-  data.py         CSV loader + synthetic data generator
-  mf.py           PyTorch low-rank MF training (MFModel)
-  inference.py    ridge-regression latent inference + LOO residuals
-  ood.py          OOD features: residual energy, Mahalanobis, variance summary
-  ensemble.py     ensemble of E MF models -> predictive variance
-  episodes.py     simulate "new model" evaluation episodes
-  evaluation.py   end-to-end harness: failure AUC + conformal coverage
-  conformal.py    split conformal quantile + interval helpers
+  data.py         CSV loading and synthetic data generation
+  mf.py           PyTorch matrix factorization
+  inference.py    closed-form new-model latent inference
+  ensemble.py     ensemble training and predictive variance
+  episodes.py     simulated partial-observation episodes
+  evaluation.py   benchmark metrics and grouped validation utilities
+  ood.py          residual, variance, and geometry OOD features
+  lm_eval.py      lm-eval JSON ingestion
+  splits.py       family inference and stronger OOD split helpers
 
 scripts/
-  run_experiments.py   CLI entry-point
-tests/                 unit tests (pytest)
+  run_demo.py
+  run_experiments.py
+  run_real_data_benchmarks.py
+  run_baseline_comparison.py
+  run_ablations.py
+  run_family_split_benchmark.py
+  run_cost_savings_analysis.py
 ```
 
 ## OOD features
 
 | Feature | Description |
 |---|---|
-| `residual_energy_obs` | MSE of ensemble mean on observed entries |
-| `max_abs_residual_obs` | largest absolute error on observed entries |
-| `mahalanobis_u` | Mahalanobis distance of inferred `u` from training distribution (LedoitWolf covariance) |
-| `mean/max_predictive_variance_hidden` | ensemble variance on hidden benchmarks |
-| `loo_mean/max_abs_error_obs` | leave-one-out residuals on observed entries - measures self-consistency of the observed subset |
-| `min_singular_value_obs` | min singular value of `V_S = V[observed_indices]` - low value means the observations do not span the latent space, so `u` is poorly identified (negative predictor of MAE) |
-| `condition_number_obs` | max / min singular value of `V_S` - high value signals ill-conditioning and predicts large hidden-benchmark error (positive predictor of MAE) |
+| `residual_energy_obs` | mean squared error on observed entries |
+| `max_abs_residual_obs` | largest absolute observed-entry error |
+| `mahalanobis_u` | latent shift relative to the training model manifold |
+| `mean/max_predictive_variance_hidden` | ensemble uncertainty on hidden benchmarks |
+| `loo_mean/max_abs_error_obs` | self-consistency of the observed subset |
+| `min_singular_value_obs` | how well the observed benchmarks span the latent space |
+| `condition_number_obs` | how ill-conditioned the observed subset is |
 
-The geometric coverage features (`min_singular_value_obs`, `condition_number_obs`) are the most predictive: they directly measure whether the revealed benchmarks can uniquely determine the model's latent vector.
+The geometry features (`min_singular_value_obs`, `condition_number_obs`) are especially important because they tell you whether the revealed benchmarks actually identify the model's latent position well enough to trust completion.
 
-## Quickstart
+## Status
 
-```bash
-pip install -e ".[dev]"
-python scripts/run_experiments.py
-```
-
-Expected output (synthetic 80-model dataset, 35% observed fraction, noise=0.15):
-
-```
-train models:       60
-test models:        20
-episodes:           100
-completion MAE:     ~0.30
-failure AUC:        ~0.69
-conformal coverage: ~0.97
-conformal quantile: ~0.76
-```
-
-To run on your own CSV (rows = models, cols = benchmarks, first row/col may be names):
-
-```bash
-python scripts/run_experiments.py --csv path/to/scores.csv
-```
-
-To run directly from lm-eval-harness JSON outputs (no CSV conversion):
-
-```bash
-python scripts/run_experiments.py --lm-eval-dir path/to/lm_eval_outputs
-```
-
-## Key options
-
-```
---rank INT               MF latent rank (default 4)
---ensemble-size INT      ensemble members (default 5)
---csv PATH               wide score matrix in CSV format
---lm-eval-dir PATH       lm-eval JSON directory (recursive)
---observed-fraction F    fraction of benchmarks revealed at inference (default 0.35)
---model-test-fraction F  fraction of models held out from MF training (default 0.25)
---alpha F                conformal miscoverage level, 1-alpha = target coverage (default 0.1)
---device STR             pytorch device: cpu / cuda / mps (default: auto)
---seed INT               random seed (default 0)
-```
-
-## Running tests
-
-```bash
-pytest
-```
+The repo is in active research-prototype mode. It is strong on reproducible experiment scripts and artifact generation, but figure polishing and more advanced visualization workflows are still in progress.

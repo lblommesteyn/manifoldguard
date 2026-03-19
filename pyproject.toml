@@ -40,9 +40,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/manifoldguard"
-Repository = "https://github.com/your-org/manifoldguard"
-Issues = "https://github.com/your-org/manifoldguard/issues"
+Homepage = "https://github.com/lblommesteyn/manifoldguard"
+Repository = "https://github.com/lblommesteyn/manifoldguard"
+Issues = "https://github.com/lblommesteyn/manifoldguard/issues"
 
 [tool.setuptools.packages.find]
 include = ["manifoldguard*"]

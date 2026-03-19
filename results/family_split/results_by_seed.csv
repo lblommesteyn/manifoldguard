@@ -1,0 +1,6 @@
+seed,held_out_families,num_train_models,num_test_models,completion_mae,failure_auc,conformal_coverage,conformal_quantile
+0,gemma|qwen,42,17,0.086380,0.510877,0.942529,0.241049
+1,deepseek|qwen|olmo|pythia,44,15,0.070051,0.722718,0.942529,0.211631
+2,falcon|qwen,43,16,0.073985,0.616071,0.858974,0.180311
+3,qwen|yi,44,15,0.084449,0.506173,0.916667,0.207008
+4,yi|qwen,44,15,0.082918,0.805556,0.988095,0.289297

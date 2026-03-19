@@ -1,0 +1,9 @@
+{
+  "train_models": 44,
+  "test_models": 15,
+  "episodes": 75,
+  "completion_mae": 0.06372665443428752,
+  "failure_auc": 0.5465784215784216,
+  "conformal_coverage": 0.9307692307692308,
+  "conformal_quantile": 0.17631903847216557
+}

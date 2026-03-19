@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import json
 import sys
 from pathlib import Path
 
@@ -50,6 +52,8 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="PyTorch device ('cpu', 'cuda', 'mps', ...). Defaults to auto-detect.",
     )
+    parser.add_argument("--output-json", type=Path, default=None, help="Optional path to write metrics JSON.")
+    parser.add_argument("--output-csv", type=Path, default=None, help="Optional path to write metrics CSV.")
 
     parser.add_argument("--synthetic-models", type=int, default=80, help="Synthetic data: number of models.")
     parser.add_argument(
@@ -101,6 +105,16 @@ def main() -> None:
         device=args.device,
     )
 
+    metrics_row = {
+        "train_models": metrics.num_train_models,
+        "test_models": metrics.num_test_models,
+        "episodes": metrics.num_episodes,
+        "completion_mae": metrics.completion_mae,
+        "failure_auc": metrics.failure_auc,
+        "conformal_coverage": metrics.conformal_coverage,
+        "conformal_quantile": metrics.conformal_quantile,
+    }
+
     print(f"train models:       {metrics.num_train_models}")
     print(f"test models:        {metrics.num_test_models}")
     print(f"episodes:           {metrics.num_episodes}")
@@ -108,6 +122,17 @@ def main() -> None:
     print(f"failure AUC:        {metrics.failure_auc:.4f}")
     print(f"conformal coverage: {metrics.conformal_coverage:.4f}")
     print(f"conformal quantile: {metrics.conformal_quantile:.4f}")
+
+    if args.output_json is not None:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(json.dumps(metrics_row, indent=2), encoding="utf-8")
+
+    if args.output_csv is not None:
+        args.output_csv.parent.mkdir(parents=True, exist_ok=True)
+        with args.output_csv.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(metrics_row))
+            writer.writeheader()
+            writer.writerow(metrics_row)
 
 
 if __name__ == "__main__":

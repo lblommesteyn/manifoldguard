@@ -89,7 +89,64 @@ def evaluate_experiment(
 
     train_indices = model_order[:n_train]
     test_indices = model_order[n_train:]
-    train_matrix = matrix[np.sort(train_indices)]
+    return evaluate_experiment_split(
+        matrix=matrix,
+        train_indices=train_indices,
+        test_indices=test_indices,
+        rank=rank,
+        ensemble_size=ensemble_size,
+        mf_reg=mf_reg,
+        ridge=ridge,
+        lr=lr,
+        epochs=epochs,
+        episodes_per_model=episodes_per_model,
+        observed_fraction=observed_fraction,
+        seed=seed,
+        alpha=alpha,
+        device=device,
+        feature_columns=feature_columns,
+    )
+
+
+def evaluate_experiment_split(
+    matrix: Array,
+    train_indices: Array,
+    test_indices: Array,
+    rank: int = 4,
+    ensemble_size: int = 5,
+    mf_reg: float = 1e-2,
+    ridge: float = 1e-2,
+    lr: float = 5e-2,
+    epochs: int = 700,
+    episodes_per_model: int = 3,
+    observed_fraction: float = 0.5,
+    seed: int = 0,
+    alpha: float = 0.1,
+    device: str | None = None,
+    feature_columns: list[int] | None = None,
+) -> ExperimentMetrics:
+    """Run completion + failure-risk + conformal evaluation on an explicit split."""
+    matrix = np.asarray(matrix, dtype=float)
+    if matrix.ndim != 2:
+        raise ValueError("matrix must be 2D.")
+
+    train_idx = np.asarray(train_indices, dtype=int)
+    test_idx = np.asarray(test_indices, dtype=int)
+    if train_idx.ndim != 1 or test_idx.ndim != 1:
+        raise ValueError("train_indices and test_indices must be 1D.")
+    if train_idx.size == 0 or test_idx.size == 0:
+        raise ValueError("train_indices and test_indices must both be non-empty.")
+    if len(np.unique(train_idx)) != train_idx.size or len(np.unique(test_idx)) != test_idx.size:
+        raise ValueError("train_indices and test_indices must not contain duplicates.")
+    if np.intersect1d(train_idx, test_idx).size > 0:
+        raise ValueError("train_indices and test_indices must be disjoint.")
+
+    max_index = matrix.shape[0] - 1
+    all_indices = np.concatenate([train_idx, test_idx])
+    if np.any(all_indices < 0) or np.any(all_indices > max_index):
+        raise ValueError(f"train/test indices must lie in [0, {max_index}].")
+
+    train_matrix = matrix[np.sort(train_idx)]
 
     ensemble = train_ensemble(
         matrix=train_matrix,
@@ -102,7 +159,7 @@ def evaluate_experiment(
         device=device,
     )
 
-    test_matrix = matrix[np.sort(test_indices)]
+    test_matrix = matrix[np.sort(test_idx)]
     episodes = simulate_new_model_episodes(
         matrix=test_matrix,
         episodes_per_model=episodes_per_model,
@@ -147,8 +204,8 @@ def evaluate_experiment(
         conformal_quantile=conformal_quantile,
         failure_threshold=failure_threshold,
         num_episodes=len(episode_results),
-        num_train_models=int(n_train),
-        num_test_models=int(n_test),
+        num_train_models=int(train_idx.size),
+        num_test_models=int(test_idx.size),
     )
 
 
@@ -220,16 +277,8 @@ def _fit_failure_auc(features: Array, labels: Array, groups: Array, seed: int) -
     if n_folds < 2:
         return float("nan")
 
+    folds = _grouped_failure_splits(features, labels, groups, seed=seed)
     clf = LogisticRegression(max_iter=2000, random_state=seed + 17)
-
-    # Stratify by label while keeping each model in one fold.
-    try:
-        splitter = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed + 11)
-        folds = list(splitter.split(features, labels, groups))
-    except ValueError:
-        # Fallback for edge cases where grouped stratification is infeasible.
-        splitter = GroupKFold(n_splits=n_folds)
-        folds = list(splitter.split(features, labels, groups))
 
     fold_aucs: list[float] = []
     for train_idx, test_idx in folds:
@@ -241,6 +290,41 @@ def _fit_failure_auc(features: Array, labels: Array, groups: Array, seed: int) -
         fold_aucs.append(float(roc_auc_score(y_test, probs)))
 
     return float(np.mean(fold_aucs)) if fold_aucs else float("nan")
+
+
+def _grouped_failure_probabilities(features: Array, labels: Array, groups: Array, seed: int) -> Array:
+    """Out-of-fold failure probabilities using grouped cross-validation."""
+    probabilities = np.full(len(labels), np.nan, dtype=float)
+    if np.unique(labels).size < 2:
+        return probabilities
+
+    unique_groups = np.unique(groups)
+    if unique_groups.size < 2:
+        return probabilities
+
+    clf = LogisticRegression(max_iter=2000, random_state=seed + 17)
+    for train_idx, test_idx in _grouped_failure_splits(features, labels, groups, seed=seed):
+        y_train, y_test = labels[train_idx], labels[test_idx]
+        if np.unique(y_train).size < 2 or np.unique(y_test).size < 2:
+            continue
+        clf.fit(features[train_idx], y_train)
+        probabilities[test_idx] = clf.predict_proba(features[test_idx])[:, 1]
+
+    return probabilities
+
+
+def _grouped_failure_splits(features: Array, labels: Array, groups: Array, seed: int) -> list[tuple[Array, Array]]:
+    unique_groups = np.unique(groups)
+    n_folds = min(5, unique_groups.size)
+    if n_folds < 2:
+        return []
+
+    try:
+        splitter = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed + 11)
+        return list(splitter.split(features, labels, groups))
+    except ValueError:
+        splitter = GroupKFold(n_splits=n_folds)
+        return list(splitter.split(features, labels, groups))
 
 
 def _evaluate_conformal(

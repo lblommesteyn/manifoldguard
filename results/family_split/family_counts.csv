@@ -1,0 +1,15 @@
+family,num_models
+dbrx,1
+deepseek,1
+falcon,4
+gemma,5
+gpt-j,1
+llama,17
+mistral,6
+olmo,1
+phi,5
+pythia,1
+qwen,12
+stablelm,1
+yi,3
+zephyr,1
