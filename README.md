@@ -50,6 +50,24 @@ python scripts/run_demo.py \
   --show-all
 ```
 
+## Manifold Visualization
+
+To see exactly where a new model lands relative to the training distribution in the latent space, use the manifold visualization tool:
+
+```bash
+# First, run a demo to generate the latest latent vectors
+python scripts/run_demo.py
+
+# Then, visualize the manifold (requires plotly, pandas, scikit-learn)
+python scripts/run_manifold_visualization.py
+```
+
+This generates:
+- `results/demo/manifold_3d.html`: An interactive 3D Plotly visualization.
+- `results/demo/manifold_2d.png`: A static 2D projection (if ran with `--matplotlib` flag).
+
+The plot colors models by their family (Llama, Phi, Qwen, etc.), allowing you to visually verify if a new model's performance "clusters" where it should or if it's an outlier.
+
 ## Real-data workflow
 
 The repo includes a fixed real dataset at [datasets/lm_eval_real/scores.csv](datasets/lm_eval_real/scores.csv). The main experiment scripts are:
@@ -133,6 +151,7 @@ scripts/
   run_ablations.py
   run_family_split_benchmark.py
   run_cost_savings_analysis.py
+  run_manifold_visualization.py
 ```
 
 ## OOD features
