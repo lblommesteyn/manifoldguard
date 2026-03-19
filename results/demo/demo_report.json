@@ -9,49 +9,49 @@
   "hidden_predictions": [
     {
       "benchmark": "ARC-Challenge",
-      "predicted_score": 0.769341144476031,
-      "interval_lower": 0.5577366995357377,
-      "interval_upper": 0.9809455894163243,
+      "predicted_score": 0.7693411677688315,
+      "interval_lower": 0.6215059542008998,
+      "interval_upper": 0.9171763813367633,
       "true_score": 0.707338,
-      "abs_error": 0.06200314447603095
+      "abs_error": 0.062003167768831524
     },
     {
       "benchmark": "GPQA",
-      "predicted_score": 0.39336309961022053,
-      "interval_lower": 0.18175865466992724,
-      "interval_upper": 0.6049675445505138,
+      "predicted_score": 0.39336311489147835,
+      "interval_lower": 0.24552790132354657,
+      "interval_upper": 0.5411983284594102,
       "true_score": 0.286913,
-      "abs_error": 0.10645009961022056
+      "abs_error": 0.10645011489147838
     },
     {
       "benchmark": "MMLU-Pro",
-      "predicted_score": 0.4406500906421324,
-      "interval_lower": 0.2290456457018391,
-      "interval_upper": 0.6522545355824256,
+      "predicted_score": 0.44065013367202976,
+      "interval_lower": 0.292814920104098,
+      "interval_upper": 0.5884853472399616,
       "true_score": 0.520695,
-      "abs_error": 0.08004490935786762
+      "abs_error": 0.08004486632797025
     },
     {
       "benchmark": "MUSR",
-      "predicted_score": 0.5191127928439236,
-      "interval_lower": 0.30750834790363035,
-      "interval_upper": 0.7307172377842169,
+      "predicted_score": 0.5191128108805919,
+      "interval_lower": 0.37127759731266013,
+      "interval_upper": 0.6669480244485237,
       "true_score": 0.414021,
-      "abs_error": 0.10509179284392367
+      "abs_error": 0.10509181088059194
     }
   ],
-  "risk_probability": 0.49999999993351407,
+  "risk_probability": 0.4999999999307576,
   "risk_label": "high",
-  "failure_threshold_mae": 0.1023599383444031,
-  "conformal_quantile": 0.2116044449402933,
+  "failure_threshold_mae": 0.0911863066521572,
+  "conformal_quantile": 0.14783521356793178,
   "risk_reasons": [
     {
       "category": "latent shift",
-      "score": 1.3523372119258492
+      "score": 1.2975437478474978
     },
     {
       "category": "residual mismatch",
-      "score": 0.6372651733810019
+      "score": 0.6046783053676533
     }
   ],
   "recommended_next_benchmark": {

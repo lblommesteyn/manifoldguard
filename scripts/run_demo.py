@@ -7,6 +7,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from pathlib import Path
@@ -190,6 +191,29 @@ def main() -> None:
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"\nReport written to {args.output_json}")
+
+    # --- Export Latent Vectors for Manifold Visualization ---
+    latent_path = args.output_json.parent / "latent_vectors.csv"
+    train_model_names = [name for i, name in enumerate(score_matrix.model_names) if train_mask[i]]
+    
+    # We use the FIRST member of the ensemble as the representative manifold
+    training_u = ensemble.members[0].U
+    target_u = prediction.inferred_latents[0]
+    rank = training_u.shape[1]
+
+    with latent_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        header = ["model_name", "type"] + [f"latent_{i}" for i in range(rank)]
+        writer.writerow(header)
+        
+        # Training models
+        for name, u_vec in zip(train_model_names, training_u):
+            writer.writerow([name, "training"] + u_vec.tolist())
+            
+        # Target model
+        writer.writerow([request["model_name"], "target"] + target_u.tolist())
+        
+    print(f"Latent vectors exported to {latent_path}")
 
 
 def _load_score_matrix(args: argparse.Namespace) -> ScoreMatrix:
