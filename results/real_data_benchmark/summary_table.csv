@@ -1,0 +1,5 @@
+metric,mean,std
+completion_mae,0.068874,0.009973
+failure_auc,0.655450,0.115821
+conformal_coverage,0.906986,0.082029
+conformal_quantile,0.203889,0.115499
