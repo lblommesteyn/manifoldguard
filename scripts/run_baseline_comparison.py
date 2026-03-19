@@ -193,13 +193,13 @@ def main() -> None:
     ]
 
     # --- print table ---
-    header = f"{'Method':<26}  {'MAE (↓)':>14}  {'Failure AUC (↑)':>17}  {'Coverage':>10}"
+    header = f"{'Method':<26}  {'MAE':>14}  {'Failure AUC':>17}  {'Coverage':>10}"
     print("\n" + header)
     print("-" * len(header))
     for name, (mae_m, mae_s), (auc_m, auc_s), (cov_m, cov_s) in methods:
-        mae_str = f"{mae_m:.4f} ± {mae_s:.4f}"
-        auc_str = f"{auc_m:.4f} ± {auc_s:.4f}" if not np.isnan(auc_m) else "—"
-        cov_str = f"{cov_m:.4f} ± {cov_s:.4f}" if not np.isnan(cov_m) else "—"
+        mae_str = f"{mae_m:.4f} +/- {mae_s:.4f}"
+        auc_str = f"{auc_m:.4f} +/- {auc_s:.4f}" if not np.isnan(auc_m) else "N/A"
+        cov_str = f"{cov_m:.4f} +/- {cov_s:.4f}" if not np.isnan(cov_m) else "N/A"
         print(f"{name:<26}  {mae_str:>14}  {auc_str:>17}  {cov_str:>10}")
 
     # --- save CSV ---
