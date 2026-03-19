@@ -34,7 +34,7 @@ from manifoldguard.evaluation import (
     _evaluate_episode,
 )
 
-DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores.csv"
+DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores_expanded.csv"
 OUT_DIR = REPO_ROOT / "results" / "baseline_comparison"
 SEEDS = [0, 1, 2, 3, 4]
 

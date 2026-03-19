@@ -29,7 +29,7 @@ from manifoldguard.inference import loo_observed_residuals
 from manifoldguard.lm_eval import load_lm_eval_results_dir
 from manifoldguard.splits import infer_model_family
 
-DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores.csv"
+DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores_expanded.csv"
 DEFAULT_REQUEST = REPO_ROOT / "examples" / "demo_request.json"
 DEFAULT_OUTPUT = REPO_ROOT / "results" / "demo" / "demo_report.json"
 
@@ -67,7 +67,10 @@ def main() -> None:
     score_matrix = _load_score_matrix(args)
     request = _resolve_request(args, score_matrix)
 
-    benchmark_to_idx = {name: idx for idx, name in enumerate(score_matrix.benchmark_names)}
+    def normalize_name(name: str) -> str:
+        return name.lower().replace("-", "_")
+
+    benchmark_to_idx = {normalize_name(name): idx for idx, name in enumerate(score_matrix.benchmark_names)}
     try:
         target_idx = score_matrix.model_names.index(request["model_name"])
     except ValueError as exc:
@@ -75,9 +78,13 @@ def main() -> None:
 
     target_row = score_matrix.values[target_idx]
     observed_scores = request["observed_scores"]
-    observed_names = list(observed_scores)
-    observed_indices = np.asarray([benchmark_to_idx[name] for name in observed_names], dtype=int)
-    observed_values = np.asarray([float(observed_scores[name]) for name in observed_names], dtype=float)
+    observed_names = [normalize_name(name) for name in observed_scores]
+    try:
+        observed_indices = np.asarray([benchmark_to_idx[name] for name in observed_names], dtype=int)
+    except KeyError as exc:
+        missing = [name for name in observed_names if name not in benchmark_to_idx]
+        raise ValueError(f"Demo request includes unknown benchmarks for this dataset: {missing}") from exc
+    observed_values = np.asarray([float(observed_scores[name]) for name in observed_scores], dtype=float)
 
     missing_from_target = [name for name in observed_names if np.isnan(target_row[benchmark_to_idx[name]])]
     if missing_from_target:

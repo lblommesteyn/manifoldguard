@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 from manifoldguard.data import load_score_csv
 from manifoldguard.evaluation import FEATURE_NAMES, evaluate_experiment
 
-DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores.csv"
+DATASET = REPO_ROOT / "datasets" / "lm_eval_real" / "scores_expanded.csv"
 OUT_DIR = REPO_ROOT / "results" / "ablations"
 SEEDS = [0, 1, 2]
 
@@ -59,7 +59,7 @@ def main() -> None:
 
     # --- 1. Rank ablation ---
     print("=== Rank ablation ===")
-    for rank in [2, 3, 4, 5]:
+    for rank in [2, 3, 4, 5, 6, 7]:
         label = f"rank={rank}"
         print(f"  {label} ...", end="", flush=True)
         r = run_config(matrix, SEEDS, **{**DEFAULTS, "rank": rank})
@@ -77,7 +77,7 @@ def main() -> None:
 
     # --- 3. Observed fraction ablation ---
     print("\n=== Observed fraction ablation ===")
-    for frac in [0.3, 0.5, 0.7]:
+    for frac in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         label = f"observed_fraction={frac}"
         print(f"  {label} ...", end="", flush=True)
         r = run_config(matrix, SEEDS, **{**DEFAULTS, "observed_fraction": frac})
