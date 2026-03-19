@@ -29,7 +29,6 @@ DEFAULTS = dict(rank=3, ensemble_size=5, observed_fraction=0.5, model_test_fract
 # Feature groups by index into FEATURE_NAMES.
 GEOMETRY_COLS = [i for i, n in enumerate(FEATURE_NAMES) if n in ("min_singular_value_obs", "condition_number_obs")]
 NON_GEOMETRY_COLS = [i for i in range(len(FEATURE_NAMES)) if i not in GEOMETRY_COLS]
-ALL_COLS = list(range(len(FEATURE_NAMES)))
 
 FEATURE_SUBSETS = {
     "all_features": None,  # None = use all
@@ -93,7 +92,6 @@ def main() -> None:
         print(f"  MAE={r['completion_mae']:.4f}  AUC={r['failure_auc']:.4f}  cov={r['conformal_coverage']:.4f}")
         rows.append({"ablation": "feature_subset", "setting": name, **{k: f"{v:.4f}" for k, v in r.items()}})
 
-    # I hate writing CSV scripts so its a little weird did it with claude, checkback to make sure formatting is correct 
     # --- Write CSV ---
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / "ablation_table.csv"

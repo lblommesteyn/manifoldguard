@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from manifoldguard.data import generate_synthetic_scores
 from manifoldguard.evaluation import _fit_failure_auc, _grouped_calibration_test_indices
 
 
@@ -44,3 +45,58 @@ def test_fit_failure_auc_grouped_cv_runs() -> None:
     auc = _fit_failure_auc(feature_arr, label_arr, group_arr, seed=7)
     assert np.isfinite(auc)
     assert 0.5 <= auc <= 1.0
+
+
+def test_evaluate_experiment_accepts_feature_subsets() -> None:
+    score_matrix = generate_synthetic_scores(
+        num_models=20,
+        num_benchmarks=6,
+        rank=2,
+        noise_std=0.05,
+        missing_rate=0.1,
+        seed=0,
+    )
+
+    from manifoldguard.evaluation import evaluate_experiment
+
+    metrics = evaluate_experiment(
+        matrix=score_matrix.values,
+        rank=2,
+        ensemble_size=1,
+        epochs=10,
+        episodes_per_model=3,
+        observed_fraction=0.5,
+        model_test_fraction=0.4,
+        feature_columns=[0, 1, 7],
+        seed=3,
+    )
+
+    assert np.isfinite(metrics.completion_mae)
+    assert np.isfinite(metrics.conformal_coverage)
+    assert metrics.num_episodes > 0
+
+
+def test_evaluate_experiment_rejects_empty_feature_subsets() -> None:
+    score_matrix = generate_synthetic_scores(
+        num_models=20,
+        num_benchmarks=6,
+        rank=2,
+        noise_std=0.05,
+        missing_rate=0.1,
+        seed=1,
+    )
+
+    from manifoldguard.evaluation import evaluate_experiment
+
+    with pytest.raises(ValueError, match="feature_columns must contain at least one column index"):
+        evaluate_experiment(
+            matrix=score_matrix.values,
+            rank=2,
+            ensemble_size=1,
+            epochs=10,
+            episodes_per_model=3,
+            observed_fraction=0.5,
+            model_test_fraction=0.4,
+            feature_columns=[],
+            seed=4,
+        )

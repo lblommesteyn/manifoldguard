@@ -71,7 +71,9 @@ def evaluate_experiment(
 
     The matrix is split into train models (used to fit the ensemble) and test
     models (held out entirely during training). Episodes are simulated only on
-    test models, so OOD features are evaluated on truly unseen rows.
+    test models, so OOD features are evaluated on truly unseen rows. When
+    feature_columns is provided, only that subset of OOD features is used by
+    the failure detector.
     """
     n_models = matrix.shape[0]
     rng = np.random.default_rng(seed)
@@ -119,6 +121,15 @@ def evaluate_experiment(
     failure_labels = (hidden_maes >= failure_threshold).astype(int)
     feature_matrix = np.vstack([r.features for r in episode_results])
     if feature_columns is not None:
+        if not feature_columns:
+            raise ValueError("feature_columns must contain at least one column index.")
+        max_feature_index = feature_matrix.shape[1] - 1
+        invalid_columns = [col for col in feature_columns if col < 0 or col > max_feature_index]
+        if invalid_columns:
+            raise ValueError(
+                f"feature_columns contains invalid indices {invalid_columns}; "
+                f"valid range is [0, {max_feature_index}]."
+            )
         feature_matrix = feature_matrix[:, feature_columns]
     failure_auc = _fit_failure_auc(feature_matrix, failure_labels, episode_groups, seed=seed)
 
