@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -12,7 +13,11 @@ from manifoldguard.conformal import empirical_coverage, split_conformal_quantile
 from manifoldguard.ensemble import EnsembleMF, predict_new_model, train_ensemble
 from manifoldguard.episodes import Episode, simulate_new_model_episodes
 from manifoldguard.inference import loo_observed_residuals
-from manifoldguard.ood import observation_coverage_features, residual_features, summary_variance_features
+from manifoldguard.ood import (
+    observation_coverage_features,
+    residual_features,
+    summary_variance_features,
+)
 
 
 Array = np.ndarray
@@ -43,14 +48,14 @@ class EpisodeResult:
 class ExperimentMetrics:
     completion_mae: float
     failure_auc: float
-    conformal_coverage: float
-    conformal_quantile: float
+    conformal_coverage: float | dict[float, float]
+    conformal_quantile: float | dict[float, float]
     failure_threshold: float
     num_episodes: int
     num_train_models: int
     num_test_models: int
-
-
+    failure_oof_probs: Array
+    failure_oof_labels: Array
 def evaluate_experiment(
     matrix: Array,
     rank: int = 4,
@@ -63,7 +68,7 @@ def evaluate_experiment(
     observed_fraction: float = 0.5,
     model_test_fraction: float = 0.25,
     seed: int = 0,
-    alpha: float = 0.1,
+    alpha: float | Sequence[float] = 0.1,
     device: str | None = None,
     feature_columns: list[int] | None = None,
 ) -> ExperimentMetrics:
@@ -188,7 +193,9 @@ def evaluate_experiment_split(
                 f"valid range is [0, {max_feature_index}]."
             )
         feature_matrix = feature_matrix[:, feature_columns]
-    failure_auc = _fit_failure_auc(feature_matrix, failure_labels, episode_groups, seed=seed)
+    failure_auc, failure_oof_probs, failure_oof_labels = _fit_failure_auc(
+        feature_matrix, failure_labels, episode_groups, seed=seed
+    )
 
     conformal_coverage, conformal_quantile = _evaluate_conformal(
         results=episode_results,
@@ -206,10 +213,14 @@ def evaluate_experiment_split(
         num_episodes=len(episode_results),
         num_train_models=int(train_idx.size),
         num_test_models=int(test_idx.size),
+        failure_oof_probs=failure_oof_probs,
+        failure_oof_labels=failure_oof_labels,
     )
 
 
-def _evaluate_episode(episode: Episode, ensemble: EnsembleMF, ridge: float) -> EpisodeResult:
+def _evaluate_episode(
+    episode: Episode, ensemble: EnsembleMF, ridge: float
+) -> EpisodeResult:
     prediction = predict_new_model(
         ensemble=ensemble,
         observed_indices=episode.observed_indices,
@@ -221,9 +232,13 @@ def _evaluate_episode(episode: Episode, ensemble: EnsembleMF, ridge: float) -> E
     hidden_pred = prediction.mean_prediction[episode.hidden_indices]
     hidden_true = episode.hidden_values
 
-    residual_energy, max_abs_residual = residual_features(episode.observed_values, observed_pred)
+    residual_energy, max_abs_residual = residual_features(
+        episode.observed_values, observed_pred
+    )
     maha = float(np.mean(prediction.mahalanobis_distances))
-    mean_var, max_var = summary_variance_features(prediction.predictive_variance, episode.hidden_indices)
+    mean_var, max_var = summary_variance_features(
+        prediction.predictive_variance, episode.hidden_indices
+    )
 
     # LOO residuals: average across ensemble members for a stable estimate.
     loo_errors_per_member = [
@@ -249,7 +264,7 @@ def _evaluate_episode(episode: Episode, ensemble: EnsembleMF, ridge: float) -> E
     cond_num = float(np.mean([f[1] for f in coverage_features]))
 
     feature_vector = np.asarray(
-        [residual_energy, max_abs_residual, maha, mean_var, max_var, loo_mean, loo_max, min_sv, cond_num],
+         [residual_energy, max_abs_residual, maha, mean_var, max_var, loo_mean, loo_max, min_sv, cond_num],
         dtype=float,
     )
     abs_hidden_residuals = np.abs(hidden_pred - hidden_true)
@@ -264,23 +279,26 @@ def _evaluate_episode(episode: Episode, ensemble: EnsembleMF, ridge: float) -> E
     )
 
 
-def _fit_failure_auc(features: Array, labels: Array, groups: Array, seed: int) -> float:
+def _fit_failure_auc(features: Array, labels: Array, groups: Array, seed: int) -> tuple[float, Array, Array]:
     """Estimate failure-detection AUC via grouped cross-validation.
 
     Episodes from the same model are kept in the same fold to avoid leakage.
     """
     if np.unique(labels).size < 2:
-        return float("nan")
+        return float("nan"), np.array([]), np.array([])
 
     unique_groups = np.unique(groups)
     n_folds = min(5, unique_groups.size)
     if n_folds < 2:
-        return float("nan")
+        return float("nan"), np.array([]), np.array([])
 
     folds = _grouped_failure_splits(features, labels, groups, seed=seed)
     clf = LogisticRegression(max_iter=2000, random_state=seed + 17)
 
     fold_aucs: list[float] = []
+    all_probs: list[float] = []
+    all_labels: list[int] = []
+
     for train_idx, test_idx in folds:
         y_train, y_test = labels[train_idx], labels[test_idx]
         if np.unique(y_train).size < 2 or np.unique(y_test).size < 2:
@@ -288,8 +306,11 @@ def _fit_failure_auc(features: Array, labels: Array, groups: Array, seed: int) -
         clf.fit(features[train_idx], y_train)
         probs = clf.predict_proba(features[test_idx])[:, 1]
         fold_aucs.append(float(roc_auc_score(y_test, probs)))
+        all_probs.extend(probs)
+        all_labels.extend(y_test)
 
-    return float(np.mean(fold_aucs)) if fold_aucs else float("nan")
+    auc = float(np.mean(fold_aucs)) if fold_aucs else float("nan")
+    return auc, np.array(all_probs), np.array(all_labels)   
 
 
 def _grouped_failure_probabilities(features: Array, labels: Array, groups: Array, seed: int) -> Array:
@@ -330,23 +351,40 @@ def _grouped_failure_splits(features: Array, labels: Array, groups: Array, seed:
 def _evaluate_conformal(
     results: list[EpisodeResult],
     episode_groups: Array,
-    alpha: float,
+    alpha: float | Sequence[float],
     seed: int,
-) -> tuple[float, float]:
-    calibration_idx, test_idx = _grouped_calibration_test_indices(episode_groups, seed=seed + 29)
+) -> tuple[float | dict[float, float], float | dict[float, float]]:
+    calibration_idx, test_idx = _grouped_calibration_test_indices(
+        episode_groups, seed=seed + 29
+    )
 
-    calibration_residuals = np.concatenate([results[i].hidden_abs_residuals for i in calibration_idx])
-    q = split_conformal_quantile(calibration_residuals, alpha=alpha)
+    calibration_residuals = np.concatenate(
+        [results[i].hidden_abs_residuals for i in calibration_idx]
+    )
 
-    covered = 0.0
-    total = 0
-    for i in test_idx:
-        result = results[i]
-        coverage = empirical_coverage(result.hidden_predictions, result.hidden_targets, q=q)
-        covered += coverage * len(result.hidden_targets)
-        total += len(result.hidden_targets)
+    alphas = [alpha] if isinstance(alpha, float) else alpha
+    coverages = {}
+    quantiles = {}
 
-    return float(covered / max(total, 1)), q
+    for a in alphas:
+        q = split_conformal_quantile(calibration_residuals, alpha=a)
+
+        covered = 0.0
+        total = 0
+        for i in test_idx:
+            result = results[i]
+            coverage = empirical_coverage(
+                result.hidden_predictions, result.hidden_targets, q=q
+            )
+            covered += coverage * len(result.hidden_targets)
+            total += len(result.hidden_targets)
+
+        coverages[a] = float(covered / max(total, 1))
+        quantiles[a] = float(q)
+
+    if isinstance(alpha, float):
+        return coverages[alpha], quantiles[alpha]
+    return coverages, quantiles
 
 
 def _grouped_calibration_test_indices(groups: Array, seed: int) -> tuple[Array, Array]:

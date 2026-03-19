@@ -47,7 +47,7 @@ def test_fit_failure_auc_grouped_cv_runs() -> None:
     label_arr = np.asarray(labels_list, dtype=int)
     feature_arr = np.vstack(features_list)
 
-    auc = _fit_failure_auc(feature_arr, label_arr, group_arr, seed=7)
+    auc, _, _ = _fit_failure_auc(feature_arr, label_arr, group_arr, seed=7)
     assert np.isfinite(auc)
     assert 0.5 <= auc <= 1.0
 
@@ -96,7 +96,12 @@ def test_evaluate_experiment_accepts_feature_subsets() -> None:
     )
 
     assert np.isfinite(metrics.completion_mae)
-    assert np.isfinite(metrics.conformal_coverage)
+    cov = metrics.conformal_coverage
+    if isinstance(cov, dict):
+        for val in cov.values():
+            assert np.isfinite(val)
+    else:
+        assert np.isfinite(cov)
     assert metrics.num_episodes > 0
 
 

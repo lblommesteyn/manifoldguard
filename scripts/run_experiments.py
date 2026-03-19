@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 from manifoldguard.data import generate_synthetic_scores, load_score_csv
 from manifoldguard.evaluation import evaluate_experiment
 from manifoldguard.lm_eval import load_lm_eval_results_dir
+from scripts.plot_calibration import generate_calibration_plot
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,7 +39,13 @@ def parse_args() -> argparse.Namespace:
         default=0.35,
         help="Fraction of a model's observed benchmarks given at inference time.",
     )
-    parser.add_argument("--alpha", type=float, default=0.1, help="Conformal miscoverage level.")
+    parser.add_argument(
+        "--alphas",
+        type=float,
+        nargs="+",
+        default=[0.05, 0.10, 0.15, 0.20],
+        help="List of conformal miscoverage levels.",
+    )
     parser.add_argument("--seed", type=int, default=0, help="Random seed.")
     parser.add_argument(
         "--model-test-fraction",
@@ -101,7 +108,7 @@ def main() -> None:
         observed_fraction=args.observed_fraction,
         model_test_fraction=args.model_test_fraction,
         seed=args.seed,
-        alpha=args.alpha,
+        alpha=args.alphas,
         device=args.device,
     )
 
@@ -120,8 +127,24 @@ def main() -> None:
     print(f"episodes:           {metrics.num_episodes}")
     print(f"completion MAE:     {metrics.completion_mae:.4f}")
     print(f"failure AUC:        {metrics.failure_auc:.4f}")
-    print(f"conformal coverage: {metrics.conformal_coverage:.4f}")
-    print(f"conformal quantile: {metrics.conformal_quantile:.4f}")
+    
+    print("\nConformal Coverage Results:")
+    print(f"{'alpha':^7} | {'target (1-a)':^14} | {'empirical':^11} | {'difference':^10}")
+    print("-" * 52)
+
+    coverages = (
+        metrics.conformal_coverage
+        if isinstance(metrics.conformal_coverage, dict)
+        else {args.alphas[0]: metrics.conformal_coverage}
+    )
+    for a in args.alphas:
+        cov = coverages[a]
+        target = 1.0 - a
+        diff = cov - target
+        print(f"{a:^7.2f} | {target:^14.2f} | {cov:^11.4f} | {diff:^+10.4f}")
+
+    if len(metrics.failure_oof_probs) > 0 and len(metrics.failure_oof_labels) > 0:
+        generate_calibration_plot(metrics.failure_oof_probs, metrics.failure_oof_labels)
 
     if args.output_json is not None:
         args.output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -133,7 +156,6 @@ def main() -> None:
             writer = csv.DictWriter(handle, fieldnames=list(metrics_row))
             writer.writeheader()
             writer.writerow(metrics_row)
-
 
 if __name__ == "__main__":
     main()
