@@ -63,6 +63,30 @@ conformal coverage: ~0.97
 conformal quantile: ~0.76
 ```
 
+## Demo
+
+For a clean, single-command demonstration of an evaluation episode (showing partial scores, predicting the missing scores with 90% conformal intervals, and calculating the final risk score), use the provided demo script:
+
+```bash
+python scripts/run_demo.py --seed 42
+```
+Add the `--show-all` flag to print the full list of missing benchmarks, or pass a specific CSV with `--csv`, or change the fraction of benchmarks revealed per model before prediction with `--observed-fraction`.
+
+## Datasets
+
+We provide scripts to fetch real-world model performance data for evaluation:
+
+- **Core Dataset (`scores.csv`)**: Contains the 7 primary aggregate benchmarks from the [Open LLM Leaderboard v2](https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard). This can be reproduced or updated by running:
+  ```bash
+  python scripts/build_dataset.py
+  ```
+- **Expanded Dataset (`scores_expanded.csv`)**: A much larger matrix containing ~44-50 benchmarks. It includes the core 7 plus dozens of dynamically discovered sub-tasks (e.g., specific MMLU-Pro or BBH categories). This provides a richer latent space for Matrix Factorization. Reproduce it with:
+  ```bash
+  python scripts/build_expanded_dataset.py
+  ```
+  *Note: These scripts require `pip install huggingface_hub` and fetch data directly from the `open-llm-leaderboard/results` repository.*
+
+
 To run on your own CSV (rows = models, cols = benchmarks, first row/col may be names):
 
 ```bash
