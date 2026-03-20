@@ -19,3 +19,6 @@ venv/
 # Editors/OS
 .DS_Store
 Thumbs.db
+
+# Local verification scratch outputs
+results/_verification/

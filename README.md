@@ -32,6 +32,12 @@ pip install -e ".[dev]"
 pytest
 ```
 
+For figures and other visualization artifacts, install the optional plotting extra:
+
+```bash
+pip install -e ".[dev,viz]"
+```
+
 Run the cold-start demo:
 
 ```bash
@@ -58,8 +64,12 @@ The repo includes a fixed real dataset at [datasets/lm_eval_real/scores.csv](dat
 python scripts/run_real_data_benchmarks.py
 python scripts/run_baseline_comparison.py
 python scripts/run_ablations.py
+python scripts/run_alpha_coverage_validation.py
 python scripts/run_family_split_benchmark.py
 python scripts/run_cost_savings_analysis.py
+python scripts/generate_raw_charts.py
+python scripts/generate_conference_figures.py
+python scripts/run_manifold_visualization.py
 ```
 
 These produce reusable CSV artifacts under `results/`:
@@ -67,9 +77,12 @@ These produce reusable CSV artifacts under `results/`:
 - `results/real_data_benchmark/` for the main random-split benchmark
 - `results/baseline_comparison/` for mean fill / nearest neighbor / MF comparisons
 - `results/ablations/` for rank, ensemble size, observed fraction, and feature subset ablations
+- `results/alpha_validation/` for empirical coverage versus target coverage across multiple alpha values
 - `results/family_split/` for the tougher family-holdout OOD setting
 - `results/cost_savings/` for risk-threshold versus benchmarks-avoided tradeoffs
 - `results/demo/` for the sample partial-score demo report
+- `results/raw_charts/` and `results/conference_figures/` for slide-ready visuals
+- `results/manifold_visualization/` for the learned manifold projection and target-model placement
 
 For a wider real matrix with subtask-level columns, build [datasets/lm_eval_real/scores_expanded.csv](datasets/lm_eval_real/scores_expanded.csv):
 
@@ -107,9 +120,12 @@ The repo currently ships:
 - random-split benchmark results across multiple seeds,
 - baseline comparison tables,
 - ablation tables,
+- conformal coverage validation across multiple alpha values,
 - a stronger family-holdout benchmark,
 - a risk-threshold cost-savings table, and
-- a one-command demo report for a partially observed model.
+- a one-command demo report for a partially observed model,
+- conference figures and raw chart exports, and
+- a latent-space plot showing where a partially observed model lands.
 
 ## Repository layout
 
@@ -151,4 +167,4 @@ The geometry features (`min_singular_value_obs`, `condition_number_obs`) are esp
 
 ## Status
 
-The repo is in active research-prototype mode. It is strong on reproducible experiment scripts and artifact generation, but figure polishing and more advanced visualization workflows are still in progress.
+The repo is in active research-prototype mode. It is strong on reproducible experiment scripts, demo flows, and figure generation, though it still prioritizes research clarity over packaging polish.

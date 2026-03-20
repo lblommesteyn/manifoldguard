@@ -67,7 +67,10 @@ def main() -> None:
     score_matrix = _load_score_matrix(args)
     request = _resolve_request(args, score_matrix)
 
-    benchmark_to_idx = {name: idx for idx, name in enumerate(score_matrix.benchmark_names)}
+    benchmark_to_idx = {
+        _normalize_benchmark_name(name): idx
+        for idx, name in enumerate(score_matrix.benchmark_names)
+    }
     try:
         target_idx = score_matrix.model_names.index(request["model_name"])
     except ValueError as exc:
@@ -75,9 +78,14 @@ def main() -> None:
 
     target_row = score_matrix.values[target_idx]
     observed_scores = request["observed_scores"]
-    observed_names = list(observed_scores)
-    observed_indices = np.asarray([benchmark_to_idx[name] for name in observed_names], dtype=int)
-    observed_values = np.asarray([float(observed_scores[name]) for name in observed_names], dtype=float)
+    observed_items = list(observed_scores.items())
+    observed_names = [_normalize_benchmark_name(name) for name, _ in observed_items]
+    try:
+        observed_indices = np.asarray([benchmark_to_idx[name] for name in observed_names], dtype=int)
+    except KeyError as exc:
+        missing = [name for name in observed_names if name not in benchmark_to_idx]
+        raise ValueError(f"Demo request includes unknown benchmarks for this dataset: {missing}") from exc
+    observed_values = np.asarray([float(value) for _, value in observed_items], dtype=float)
 
     missing_from_target = [name for name in observed_names if np.isnan(target_row[benchmark_to_idx[name]])]
     if missing_from_target:
@@ -224,6 +232,10 @@ def _load_request(path: Path) -> dict[str, object]:
     if not isinstance(observed_scores, dict) or not observed_scores:
         raise ValueError("Demo request must include observed_scores.")
     return {"model_name": model_name, "observed_scores": observed_scores}
+
+
+def _normalize_benchmark_name(name: str) -> str:
+    return name.strip().lower().replace("-", "_")
 
 
 def _sample_request_from_model(

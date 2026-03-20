@@ -1,0 +1,5 @@
+alpha,target_coverage,empirical_coverage_mean,empirical_coverage_std,coverage_deviation_mean,coverage_deviation_std,conformal_quantile_mean,conformal_quantile_std
+0.05,0.95,0.965393,0.040100,+0.015393,0.040100,0.338243,0.105843
+0.10,0.90,0.906986,0.082029,+0.006986,0.082029,0.203889,0.115499
+0.20,0.80,0.784437,0.080098,-0.015563,0.080098,0.092597,0.017227
+0.30,0.70,0.703003,0.082432,+0.003003,0.082432,0.069999,0.012604

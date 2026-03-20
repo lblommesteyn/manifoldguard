@@ -38,6 +38,9 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+viz = [
+    "matplotlib>=3.8",
+]
 
 [project.urls]
 Homepage = "https://github.com/lblommesteyn/manifoldguard"
