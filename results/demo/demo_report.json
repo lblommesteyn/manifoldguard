@@ -8,54 +8,350 @@
   },
   "hidden_predictions": [
     {
-      "benchmark": "ARC-Challenge",
-      "predicted_score": 0.769341144476031,
-      "interval_lower": 0.5577366995357377,
-      "interval_upper": 0.9809455894163243,
+      "benchmark": "arc_challenge",
+      "predicted_score": 0.7882464442241904,
+      "interval_lower": 0.581075702337216,
+      "interval_upper": 0.9954171861111649,
       "true_score": 0.707338,
-      "abs_error": 0.06200314447603095
+      "abs_error": 0.08090844422419041
     },
     {
-      "benchmark": "GPQA",
-      "predicted_score": 0.39336309961022053,
-      "interval_lower": 0.18175865466992724,
-      "interval_upper": 0.6049675445505138,
+      "benchmark": "gpqa",
+      "predicted_score": 0.4155369811991366,
+      "interval_lower": 0.20836623931216214,
+      "interval_upper": 0.6227077230861111,
       "true_score": 0.286913,
-      "abs_error": 0.10645009961022056
+      "abs_error": 0.12862398119913665
     },
     {
-      "benchmark": "MMLU-Pro",
-      "predicted_score": 0.4406500906421324,
-      "interval_lower": 0.2290456457018391,
-      "interval_upper": 0.6522545355824256,
+      "benchmark": "mmlu_pro",
+      "predicted_score": 0.4154250143509336,
+      "interval_lower": 0.2082542724639591,
+      "interval_upper": 0.6225957562379081,
       "true_score": 0.520695,
-      "abs_error": 0.08004490935786762
+      "abs_error": 0.10526998564906642
     },
     {
-      "benchmark": "MUSR",
-      "predicted_score": 0.5191127928439236,
-      "interval_lower": 0.30750834790363035,
-      "interval_upper": 0.7307172377842169,
+      "benchmark": "musr",
+      "predicted_score": 0.5714134124712198,
+      "interval_lower": 0.3642426705842453,
+      "interval_upper": 0.7785841543581943,
       "true_score": 0.414021,
-      "abs_error": 0.10509179284392367
+      "abs_error": 0.15739241247121982
+    },
+    {
+      "benchmark": "bbh_boolean_expressions",
+      "predicted_score": 1.076389106926773,
+      "interval_lower": 0.8692183650397985,
+      "interval_upper": 1.2835598488137476,
+      "true_score": 0.908,
+      "abs_error": 0.168389106926773
+    },
+    {
+      "benchmark": "bbh_causal_judgement",
+      "predicted_score": 0.8323575411092576,
+      "interval_lower": 0.6251867992222832,
+      "interval_upper": 1.039528282996232,
+      "true_score": 0.727273,
+      "abs_error": 0.10508454110925769
+    },
+    {
+      "benchmark": "bbh_date_understanding",
+      "predicted_score": 0.5894340973646506,
+      "interval_lower": 0.3822633554776761,
+      "interval_upper": 0.7966048392516251,
+      "true_score": 0.636,
+      "abs_error": 0.04656590263534943
+    },
+    {
+      "benchmark": "bbh_disambiguation_qa",
+      "predicted_score": 0.7530720045411698,
+      "interval_lower": 0.5459012626541954,
+      "interval_upper": 0.9602427464281443,
+      "true_score": 0.712,
+      "abs_error": 0.04107200454116988
+    },
+    {
+      "benchmark": "bbh_formal_fallacies",
+      "predicted_score": 0.798235506016003,
+      "interval_lower": 0.5910647641290285,
+      "interval_upper": 1.0054062479029775,
+      "true_score": 0.732,
+      "abs_error": 0.06623550601600303
+    },
+    {
+      "benchmark": "bbh_geometric_shapes",
+      "predicted_score": 0.42133782611955234,
+      "interval_lower": 0.21416708423257785,
+      "interval_upper": 0.6285085680065268,
+      "true_score": 0.428,
+      "abs_error": 0.006662173880447653
+    },
+    {
+      "benchmark": "bbh_hyperbaton",
+      "predicted_score": 0.8699807434544671,
+      "interval_lower": 0.6628100015674926,
+      "interval_upper": 1.0771514853414415,
+      "true_score": 0.568,
+      "abs_error": 0.3019807434544671
+    },
+    {
+      "benchmark": "bbh_logical_deduction_five_objects",
+      "predicted_score": 0.543777911945759,
+      "interval_lower": 0.3366071700587845,
+      "interval_upper": 0.7509486538327335,
+      "true_score": 0.568,
+      "abs_error": 0.024222088054240976
+    },
+    {
+      "benchmark": "bbh_logical_deduction_seven_objects",
+      "predicted_score": 0.48026487500442216,
+      "interval_lower": 0.2730941331174477,
+      "interval_upper": 0.6874356168913967,
+      "true_score": 0.556,
+      "abs_error": 0.07573512499557788
+    },
+    {
+      "benchmark": "bbh_logical_deduction_three_objects",
+      "predicted_score": 0.7949268769873093,
+      "interval_lower": 0.5877561351003349,
+      "interval_upper": 1.0020976188742838,
+      "true_score": 0.86,
+      "abs_error": 0.06507312301269064
+    },
+    {
+      "benchmark": "bbh_movie_recommendation",
+      "predicted_score": 0.7160364081734745,
+      "interval_lower": 0.5088656662865,
+      "interval_upper": 0.923207150060449,
+      "true_score": 0.752,
+      "abs_error": 0.03596359182652553
+    },
+    {
+      "benchmark": "bbh_navigate",
+      "predicted_score": 0.7934969027628093,
+      "interval_lower": 0.5863261608758348,
+      "interval_upper": 1.0006676446497837,
+      "true_score": 0.592,
+      "abs_error": 0.2014969027628093
+    },
+    {
+      "benchmark": "bbh_object_counting",
+      "predicted_score": 0.5061534229990945,
+      "interval_lower": 0.29898268111212,
+      "interval_upper": 0.713324164886069,
+      "true_score": 0.444,
+      "abs_error": 0.06215342299909449
+    },
+    {
+      "benchmark": "bbh_penguins_in_a_table",
+      "predicted_score": 0.5720636649361965,
+      "interval_lower": 0.36489292304922205,
+      "interval_upper": 0.779234406823171,
+      "true_score": 0.671233,
+      "abs_error": 0.09916933506380343
+    },
+    {
+      "benchmark": "bbh_reasoning_about_colored_objects",
+      "predicted_score": 0.600773966252773,
+      "interval_lower": 0.39360322436579853,
+      "interval_upper": 0.8079447081397475,
+      "true_score": 0.84,
+      "abs_error": 0.23922603374722695
+    },
+    {
+      "benchmark": "bbh_ruin_names",
+      "predicted_score": 0.6609820964986728,
+      "interval_lower": 0.4538113546116983,
+      "interval_upper": 0.8681528383856473,
+      "true_score": 0.884,
+      "abs_error": 0.22301790350132722
+    },
+    {
+      "benchmark": "bbh_salient_translation_error_detection",
+      "predicted_score": 0.5333898310566088,
+      "interval_lower": 0.32621908916963427,
+      "interval_upper": 0.7405605729435832,
+      "true_score": 0.664,
+      "abs_error": 0.13061016894339128
+    },
+    {
+      "benchmark": "bbh_snarks",
+      "predicted_score": 0.865580500294714,
+      "interval_lower": 0.6584097584077395,
+      "interval_upper": 1.0727512421816885,
+      "true_score": 0.741573,
+      "abs_error": 0.12400750029471397
+    },
+    {
+      "benchmark": "bbh_sports_understanding",
+      "predicted_score": 0.9449441414162811,
+      "interval_lower": 0.7377733995293067,
+      "interval_upper": 1.1521148833032555,
+      "true_score": 0.912,
+      "abs_error": 0.0329441414162811
+    },
+    {
+      "benchmark": "bbh_temporal_sequences",
+      "predicted_score": 0.46417711804860123,
+      "interval_lower": 0.25700637616162675,
+      "interval_upper": 0.6713478599355758,
+      "true_score": 0.984,
+      "abs_error": 0.5198228819513988
+    },
+    {
+      "benchmark": "bbh_tracking_shuffled_objects_five_objects",
+      "predicted_score": 0.2790566568360183,
+      "interval_lower": 0.07188591494904384,
+      "interval_upper": 0.4862273987229928,
+      "true_score": 0.304,
+      "abs_error": 0.02494334316398167
+    },
+    {
+      "benchmark": "bbh_tracking_shuffled_objects_seven_objects",
+      "predicted_score": 0.24378172233589263,
+      "interval_lower": 0.03661098044891814,
+      "interval_upper": 0.4509524642228671,
+      "true_score": 0.288,
+      "abs_error": 0.04421827766410735
+    },
+    {
+      "benchmark": "bbh_tracking_shuffled_objects_three_objects",
+      "predicted_score": 0.45460853005893265,
+      "interval_lower": 0.24743778817195816,
+      "interval_upper": 0.6617792719459071,
+      "true_score": 0.404,
+      "abs_error": 0.05060853005893262
+    },
+    {
+      "benchmark": "bbh_web_of_lies",
+      "predicted_score": 0.7616620865549985,
+      "interval_lower": 0.554491344668024,
+      "interval_upper": 0.9688328284419729,
+      "true_score": 0.536,
+      "abs_error": 0.22566208655499842
+    },
+    {
+      "benchmark": "math_algebra_hard",
+      "predicted_score": 0.4148598102742219,
+      "interval_lower": 0.20768906838724743,
+      "interval_upper": 0.6220305521611964,
+      "true_score": 0.446254,
+      "abs_error": 0.031394189725778066
+    },
+    {
+      "benchmark": "math_counting_and_prob_hard",
+      "predicted_score": 0.2248040841947697,
+      "interval_lower": 0.017633342307795202,
+      "interval_upper": 0.4319748260817442,
+      "true_score": 0.186992,
+      "abs_error": 0.037812084194769696
+    },
+    {
+      "benchmark": "math_geometry_hard",
+      "predicted_score": 0.142184118310882,
+      "interval_lower": -0.06498662357609247,
+      "interval_upper": 0.3493548601978565,
+      "true_score": 0.098485,
+      "abs_error": 0.04369911831088201
+    },
+    {
+      "benchmark": "math_intermediate_algebra_hard",
+      "predicted_score": 0.0876836801953466,
+      "interval_lower": -0.11948706169162789,
+      "interval_upper": 0.2948544220823211,
+      "true_score": 0.060714,
+      "abs_error": 0.026969680195346603
+    },
+    {
+      "benchmark": "math_num_theory_hard",
+      "predicted_score": 0.25293565192135165,
+      "interval_lower": 0.04576491003437716,
+      "interval_upper": 0.46010639380832613,
+      "true_score": 0.253247,
+      "abs_error": 0.0003113480786483547
+    },
+    {
+      "benchmark": "math_prealgebra_hard",
+      "predicted_score": 0.42349351814519987,
+      "interval_lower": 0.21632277625822538,
+      "interval_upper": 0.6306642600321744,
+      "true_score": 0.430052,
+      "abs_error": 0.0065584818548001245
+    },
+    {
+      "benchmark": "math_precalculus_hard",
+      "predicted_score": 0.09769977465383624,
+      "interval_lower": -0.10947096723313825,
+      "interval_upper": 0.3048705165408107,
+      "true_score": 0.088889,
+      "abs_error": 0.008810774653836242
+    },
+    {
+      "benchmark": "gpqa_diamond",
+      "predicted_score": 0.4035220142849975,
+      "interval_lower": 0.19635127239802302,
+      "interval_upper": 0.6106927561719719,
+      "true_score": 0.277778,
+      "abs_error": 0.12574401428499749
+    },
+    {
+      "benchmark": "gpqa_extended",
+      "predicted_score": 0.4140370382587758,
+      "interval_lower": 0.20686629637180132,
+      "interval_upper": 0.6212077801457503,
+      "true_score": 0.300366,
+      "abs_error": 0.11367103825877578
+    },
+    {
+      "benchmark": "gpqa_main",
+      "predicted_score": 0.42221816677207363,
+      "interval_lower": 0.21504742488509915,
+      "interval_upper": 0.6293889086590481,
+      "true_score": 0.274554,
+      "abs_error": 0.1476641667720736
+    },
+    {
+      "benchmark": "musr_murder_mysteries",
+      "predicted_score": 0.7675816939380009,
+      "interval_lower": 0.5604109520510264,
+      "interval_upper": 0.9747524358249754,
+      "true_score": 0.54,
+      "abs_error": 0.22758169393800087
+    },
+    {
+      "benchmark": "musr_object_placements",
+      "predicted_score": 0.39045818213285116,
+      "interval_lower": 0.18328744024587668,
+      "interval_upper": 0.5976289240198256,
+      "true_score": 0.246094,
+      "abs_error": 0.14436418213285115
+    },
+    {
+      "benchmark": "musr_team_allocation",
+      "predicted_score": 0.560558633784634,
+      "interval_lower": 0.3533878918976595,
+      "interval_upper": 0.7677293756716085,
+      "true_score": 0.46,
+      "abs_error": 0.10055863378463398
     }
   ],
-  "risk_probability": 0.49999999993351407,
+  "risk_probability": 0.49999999991800603,
   "risk_label": "high",
-  "failure_threshold_mae": 0.1023599383444031,
-  "conformal_quantile": 0.2116044449402933,
+  "failure_threshold_mae": 0.10833732497295115,
+  "conformal_quantile": 0.20717074188697449,
   "risk_reasons": [
     {
       "category": "latent shift",
-      "score": 1.3523372119258492
+      "score": 1.3969429567923797
     },
     {
       "category": "residual mismatch",
-      "score": 0.6372651733810019
+      "score": 0.4683122102885582
     }
   ],
   "recommended_next_benchmark": {
-    "benchmark": "ARC-Challenge",
+    "benchmark": "math_algebra_hard",
     "score": 1.0
   },
   "decision": "continue",
