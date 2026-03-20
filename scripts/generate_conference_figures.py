@@ -224,7 +224,7 @@ def random_split_indices(n_models: int, test_fraction: float, seed: int) -> tupl
     return np.sort(order[:n_train]), np.sort(order[n_train:])
 
 
-def build_risk_stratification_artifacts(data_dir: Path) -> list[dict[str, float]]:
+def build_risk_stratification_artifacts(data_dir: Path) -> tuple[list[dict[str, float]], list[dict[str, float]]]:
     score_matrix = load_score_csv(SCORE_CSV)
     matrix = score_matrix.values
     episode_rows: list[dict[str, float]] = []
@@ -292,7 +292,7 @@ def build_risk_stratification_artifacts(data_dir: Path) -> list[dict[str, float]
                     int(row["count"]),
                 ]
             )
-    return bins
+    return episode_rows, bins
 
 
 def summarize_risk_bins(episode_rows: list[dict[str, float]]) -> list[dict[str, float]]:
@@ -333,19 +333,31 @@ def generate_overview_figure(
     metric_colors = [COLORS["mae"], COLORS["auc"], COLORS["coverage"], COLORS["quantile"]]
     values = [benchmark_metrics[key] for key in metric_keys]
     ax = axes[0, 0]
-    ax.bar(metric_labels, values, color=metric_colors)
-    style_axis(ax, "Primary benchmark summary", ylabel="Value")
+    ax.bar(metric_labels, values, color=metric_colors, edgecolor="white", linewidth=1.2)
+    style_axis(ax, "Primary benchmark outcome", ylabel="Value")
     for x, value in enumerate(values):
         ax.text(x, value + 0.015, f"{value:.3f}", ha="center", fontsize=9.5)
+    ax.text(
+        0.02,
+        0.96,
+        "Lower is better for MAE.\nHigher is better for AUC and coverage.",
+        transform=ax.transAxes,
+        va="top",
+        fontsize=9,
+        color=COLORS["muted"],
+    )
 
     ax = axes[0, 1]
     names = [name for name, _ in benchmark_coverage]
     counts = [count for _, count in benchmark_coverage]
-    ax.bar(names, counts, color=COLORS["navy"])
-    style_axis(ax, "Observed rows per benchmark", ylabel="Models with scores")
+    ax.hlines(np.arange(len(names)), 0, counts, color=COLORS["grid"], linewidth=2.4)
+    ax.scatter(counts, np.arange(len(names)), s=90, color=COLORS["navy"], zorder=3)
+    style_axis(ax, "Benchmark coverage in the dataset", xlabel="Models with scores")
+    ax.set_yticks(np.arange(len(names)))
+    ax.set_yticklabels(names)
     ax.tick_params(axis="x", rotation=25)
-    for x, count in enumerate(counts):
-        ax.text(x, count + 0.6, str(count), ha="center", fontsize=9)
+    for y, count in enumerate(counts):
+        ax.text(count + 0.35, y, str(count), va="center", fontsize=9)
 
     ax = axes[1, 0]
     targets = np.asarray([row["target_coverage"] for row in alpha_rows], dtype=float)
@@ -353,8 +365,9 @@ def generate_overview_figure(
     stds = np.asarray([row["empirical_coverage_std"] for row in alpha_rows], dtype=float)
     alphas = np.asarray([row["alpha"] for row in alpha_rows], dtype=float)
     ax.errorbar(targets, empirical, yerr=stds, fmt="o-", color=COLORS["coverage"], ecolor=COLORS["ink"], capsize=4)
+    ax.fill_between([0.65, 1.0], [0.65, 1.0], [0.70, 1.05], color=COLORS["coverage"], alpha=0.05)
     ax.plot([0.65, 1.0], [0.65, 1.0], linestyle="--", linewidth=1.2, color=COLORS["gray"])
-    style_axis(ax, "Conformal coverage vs target", xlabel="Target coverage (1 - alpha)", ylabel="Empirical coverage")
+    style_axis(ax, "Conformal calibration holds across alpha", xlabel="Target coverage (1 - alpha)", ylabel="Empirical coverage")
     ax.set_xlim(0.65, 1.0)
     ax.set_ylim(0.65, 1.0)
     for x, y, alpha in zip(targets, empirical, alphas):
@@ -364,12 +377,12 @@ def generate_overview_figure(
     top_families = family_counts[:8][::-1]
     family_names = [name for name, _ in top_families]
     family_sizes = [count for _, count in top_families]
-    ax.barh(family_names, family_sizes, color=COLORS["gold"])
+    ax.barh(family_names, family_sizes, color=COLORS["gold"], edgecolor="white", linewidth=1.0)
     style_axis(ax, "Largest model families", xlabel="Number of models")
     for y, count in enumerate(family_sizes):
         ax.text(count + 0.15, y, str(count), va="center", fontsize=9)
 
-    fig.suptitle("Conference Figure 01: benchmark and dataset overview", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 01: why the real-data story is credible", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -390,7 +403,8 @@ def generate_baseline_comparison(path: Path, dpi: int, baseline_rows: list[dict[
         stds = np.asarray([float(row[std_key]) for row in baseline_rows], dtype=float)
         bar_colors = [color if name == highlight else COLORS["gray"] for name in names]
         finite = np.isfinite(values)
-        ax.barh(y[finite], values[finite], color=np.asarray(bar_colors, dtype=object)[finite])
+        ax.hlines(y[finite], np.nanmin(values[finite]) if not invert else np.nanmax(values[finite]), values[finite], color=COLORS["grid"], linewidth=2.4)
+        ax.scatter(values[finite], y[finite], s=95, color=np.asarray(bar_colors, dtype=object)[finite], zorder=3, edgecolors="white", linewidths=1.2)
         if np.any(finite & np.isfinite(stds)):
             ax.errorbar(values[finite], y[finite], xerr=stds[finite], fmt="none", ecolor=COLORS["ink"], capsize=3)
         style_axis(ax, title)
@@ -402,7 +416,7 @@ def generate_baseline_comparison(path: Path, dpi: int, baseline_rows: list[dict[
             ax.text(value, yy, f" {value:.3f}" if not invert else f"{value:.3f} ", va="center", ha="left" if not invert else "right", fontsize=9)
         ax.set_ylim(-0.6, len(names) - 0.4)
 
-    fig.suptitle("Conference Figure 02: baseline comparison", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 02: the full method earns its extra machinery", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -426,7 +440,7 @@ def generate_observed_fraction_curve(path: Path, dpi: int, observed_rows: list[d
     axes[-1].set_xlabel("Observed benchmark fraction")
     axes[-1].set_xticks(fractions)
     axes[-1].set_xticklabels([f"{int(value * 100)}%" for value in fractions])
-    fig.suptitle("Conference Figure 03: performance vs observed fraction", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 03: predictions become useful after surprisingly few anchors", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -444,17 +458,26 @@ def generate_family_split_figure(
     labels = ["MAE", "AUC", "Coverage", "Quantile"]
     random_values = np.asarray([benchmark_metrics[key] for key in metric_keys], dtype=float)
     family_values = np.asarray([family_metrics[key] for key in metric_keys], dtype=float)
-    x = np.arange(len(metric_keys))
-    width = 0.36
-    ax.bar(x - width / 2, random_values, width, color=COLORS["auc"], label="Random split")
-    ax.bar(x + width / 2, family_values, width, color=COLORS["mae"], label="Family holdout")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    style_axis(ax, "Random split vs family holdout", ylabel="Metric value")
-    ax.legend(frameon=False)
-    for xpos, random_value, family_value in zip(x, random_values, family_values):
-        ax.text(xpos - width / 2, random_value + 0.01, f"{random_value:.3f}", ha="center", fontsize=9)
-        ax.text(xpos + width / 2, family_value + 0.01, f"{family_value:.3f}", ha="center", fontsize=9)
+    y = np.arange(len(metric_keys))
+    for yy, label, random_value, family_value in zip(y, labels, random_values, family_values):
+        ax.plot([random_value, family_value], [yy, yy], color=COLORS["grid"], linewidth=3.0, zorder=1)
+        ax.scatter(random_value, yy, s=85, color=COLORS["auc"], edgecolors="white", linewidths=1.2, zorder=3)
+        ax.scatter(family_value, yy, s=85, color=COLORS["mae"], edgecolors="white", linewidths=1.2, zorder=3)
+        ax.text(random_value, yy + 0.12, f"{random_value:.3f}", ha="center", fontsize=9, color=COLORS["auc"])
+        ax.text(family_value, yy - 0.18, f"{family_value:.3f}", ha="center", fontsize=9, color=COLORS["mae"])
+        delta = family_value - random_value
+        ax.text(max(random_value, family_value) + 0.02, yy, f"Δ {delta:+.3f}", va="center", fontsize=9, color=COLORS["ink"])
+    style_axis(ax, "How much harder is family holdout?", xlabel="Metric value")
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.legend(
+        handles=[
+            mpl.lines.Line2D([0], [0], marker="o", color="none", markerfacecolor=COLORS["auc"], markeredgecolor="white", markersize=8, label="Random split"),
+            mpl.lines.Line2D([0], [0], marker="o", color="none", markerfacecolor=COLORS["mae"], markeredgecolor="white", markersize=8, label="Family holdout"),
+        ],
+        frameon=False,
+        loc="lower right",
+    )
 
     ax = axes[1]
     top_families = family_counts[:10][::-1]
@@ -465,7 +488,7 @@ def generate_family_split_figure(
     for y, count in enumerate(counts):
         ax.text(count + 0.15, y, str(count), va="center", fontsize=9)
 
-    fig.suptitle("Conference Figure 04: tougher family-holdout split", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 04: OOD-by-family is harder, but the uncertainty layer still behaves", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -493,20 +516,49 @@ def generate_cost_frontier(path: Path, dpi: int, cost_rows: list[dict[str, float
     ax.set_xticks(thresholds)
     ax.legend(frameon=False)
 
-    fig.suptitle("Conference Figure 05: cost-savings frontier", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 05: risk gating buys real benchmark savings", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
-def generate_risk_stratification(path: Path, dpi: int, bins: list[dict[str, float]]) -> None:
-    fig, ax = plt.subplots(figsize=(9.5, 5.8), constrained_layout=True)
+def generate_risk_stratification(
+    path: Path,
+    dpi: int,
+    episode_rows: list[dict[str, float]],
+    bins: list[dict[str, float]],
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.8), constrained_layout=True)
     labels = [f"{row['bin_left']:.1f}-{row['bin_right']:.1f}" for row in bins]
     failure_rates = np.asarray([row["failure_rate"] for row in bins], dtype=float)
     mean_maes = np.asarray([row["mean_hidden_mae"] for row in bins], dtype=float)
     counts = np.asarray([row["count"] for row in bins], dtype=float)
     x = np.arange(len(labels))
 
+    ax = axes[0]
+    probabilities = np.asarray([row["risk_probability"] for row in episode_rows], dtype=float)
+    maes = np.asarray([row["hidden_mae"] for row in episode_rows], dtype=float)
+    failures = np.asarray([row["failure_label"] for row in episode_rows], dtype=int)
+    ax.scatter(
+        probabilities[failures == 0],
+        maes[failures == 0],
+        s=24,
+        alpha=0.55,
+        color=COLORS["auc"],
+        label="safe episode",
+    )
+    ax.scatter(
+        probabilities[failures == 1],
+        maes[failures == 1],
+        s=28,
+        alpha=0.85,
+        color=COLORS["red"],
+        label="failure episode",
+    )
+    style_axis(ax, "Episode-level risk vs hidden-score error", xlabel="Predicted failure probability", ylabel="Hidden MAE")
+    ax.legend(frameon=False, loc="upper left")
+
+    ax = axes[1]
     bars = ax.bar(x, failure_rates, color=COLORS["gold"])
-    style_axis(ax, "Failure rate by predicted-risk bin", xlabel="Predicted failure probability bin", ylabel="Empirical failure rate")
+    style_axis(ax, "Binned failure rate and MAE", xlabel="Predicted failure probability bin", ylabel="Empirical failure rate")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.axhline(0.20, linestyle="--", linewidth=1.2, color=COLORS["gray"])
@@ -521,7 +573,7 @@ def generate_risk_stratification(path: Path, dpi: int, bins: list[dict[str, floa
     for bar, count in zip(bars, counts):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.015, f"n={int(count)}", ha="center", fontsize=9)
 
-    fig.suptitle("Conference Figure 06: risk stratification", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 06: the risk score actually sorts the hard cases", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -559,7 +611,7 @@ def generate_demo_case_study(path: Path, dpi: int, demo_report: dict[str, object
     for xpos, pred, truth in zip(x, preds, truths):
         ax.text(xpos, max(pred, truth) + 0.04, f"{abs(pred - truth):.3f}", ha="center", fontsize=8.5)
 
-    fig.suptitle("Conference Figure 07: qualitative demo case", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 07: one partial-evaluation case study", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -578,7 +630,7 @@ def generate_alpha_validation(path: Path, dpi: int, alpha_rows: list[dict[str, f
     for x, y, alpha in zip(targets, empirical, alphas):
         ax.text(x + 0.005, y + 0.004, f"a={alpha:.2f}", fontsize=9)
 
-    fig.suptitle("Conference Figure 08: alpha validation", fontsize=14, fontweight="bold")
+    fig.suptitle("Conference Figure 08: conformal coverage across multiple alpha values", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -596,7 +648,7 @@ def main() -> None:
     benchmark_coverage = load_benchmark_coverage()
     cost_rows = load_cost_rows()
     demo_report = load_demo_report()
-    risk_bins = build_risk_stratification_artifacts(data_dir)
+    episode_rows, risk_bins = build_risk_stratification_artifacts(data_dir)
 
     figures = [
         ("01_method_overview.png", lambda p: generate_overview_figure(p, args.dpi, benchmark_metrics, alpha_rows, benchmark_coverage, family_counts)),
@@ -604,7 +656,7 @@ def main() -> None:
         ("03_observed_fraction_curve.png", lambda p: generate_observed_fraction_curve(p, args.dpi, observed_rows)),
         ("04_family_holdout_vs_random.png", lambda p: generate_family_split_figure(p, args.dpi, benchmark_metrics, family_metrics, family_counts)),
         ("05_cost_savings_frontier.png", lambda p: generate_cost_frontier(p, args.dpi, cost_rows)),
-        ("06_risk_stratification.png", lambda p: generate_risk_stratification(p, args.dpi, risk_bins)),
+        ("06_risk_stratification.png", lambda p: generate_risk_stratification(p, args.dpi, episode_rows, risk_bins)),
         ("07_demo_case_study.png", lambda p: generate_demo_case_study(p, args.dpi, demo_report)),
         ("08_alpha_validation.png", lambda p: generate_alpha_validation(p, args.dpi, alpha_rows)),
     ]
