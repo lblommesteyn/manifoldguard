@@ -42,6 +42,7 @@ COST_SUMMARY = REPO_ROOT / "results" / "cost_savings" / "summary_table.csv"
 DEMO_REPORT = REPO_ROOT / "results" / "demo" / "demo_report.json"
 SCORE_CSV = REPO_ROOT / "datasets" / "lm_eval_real" / "scores.csv"
 DEFAULT_OUT_DIR = REPO_ROOT / "results" / "conference_figures"
+MANIFOLD_PROJECTION = REPO_ROOT / "results" / "manifold_visualization" / "projection.csv"
 
 RISK_SEEDS = [0, 1, 2, 3, 4]
 
@@ -146,6 +147,10 @@ def load_baseline_rows() -> list[dict[str, float | str]]:
     return rows
 
 
+def load_ablation_rows() -> list[dict[str, str]]:
+    return read_csv_rows(ABLATION_TABLE)
+
+
 def load_observed_fraction_rows() -> list[dict[str, float]]:
     rows = []
     for row in read_csv_rows(ABLATION_TABLE):
@@ -206,6 +211,26 @@ def load_cost_rows() -> list[dict[str, float]]:
 
 def load_demo_report() -> dict[str, object]:
     return json.loads(DEMO_REPORT.read_text(encoding="utf-8"))
+
+
+def load_manifold_projection() -> list[dict[str, str | float]]:
+    if not MANIFOLD_PROJECTION.exists():
+        raise SystemExit(
+            f"Missing {MANIFOLD_PROJECTION}. Run `python scripts/run_manifold_visualization.py` first."
+        )
+
+    rows: list[dict[str, str | float]] = []
+    for row in read_csv_rows(MANIFOLD_PROJECTION):
+        rows.append(
+            {
+                "model_name": row["model_name"],
+                "family": row["family"],
+                "point_type": row["point_type"],
+                "pc1": as_float(row["pc1"]),
+                "pc2": as_float(row["pc2"]),
+            }
+        )
+    return rows
 
 
 def load_benchmark_coverage() -> list[tuple[str, int]]:
@@ -382,7 +407,7 @@ def generate_overview_figure(
     for y, count in enumerate(family_sizes):
         ax.text(count + 0.15, y, str(count), va="center", fontsize=9)
 
-    fig.suptitle("Conference Figure 01: why the real-data story is credible", fontsize=14, fontweight="bold")
+    fig.suptitle("Real-data benchmark overview", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -416,7 +441,7 @@ def generate_baseline_comparison(path: Path, dpi: int, baseline_rows: list[dict[
             ax.text(value, yy, f" {value:.3f}" if not invert else f"{value:.3f} ", va="center", ha="left" if not invert else "right", fontsize=9)
         ax.set_ylim(-0.6, len(names) - 0.4)
 
-    fig.suptitle("Conference Figure 02: the full method earns its extra machinery", fontsize=14, fontweight="bold")
+    fig.suptitle("Baseline comparison", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -440,7 +465,7 @@ def generate_observed_fraction_curve(path: Path, dpi: int, observed_rows: list[d
     axes[-1].set_xlabel("Observed benchmark fraction")
     axes[-1].set_xticks(fractions)
     axes[-1].set_xticklabels([f"{int(value * 100)}%" for value in fractions])
-    fig.suptitle("Conference Figure 03: predictions become useful after surprisingly few anchors", fontsize=14, fontweight="bold")
+    fig.suptitle("Performance versus observed fraction", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -488,7 +513,7 @@ def generate_family_split_figure(
     for y, count in enumerate(counts):
         ax.text(count + 0.15, y, str(count), va="center", fontsize=9)
 
-    fig.suptitle("Conference Figure 04: OOD-by-family is harder, but the uncertainty layer still behaves", fontsize=14, fontweight="bold")
+    fig.suptitle("Family-holdout evaluation", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -516,7 +541,7 @@ def generate_cost_frontier(path: Path, dpi: int, cost_rows: list[dict[str, float
     ax.set_xticks(thresholds)
     ax.legend(frameon=False)
 
-    fig.suptitle("Conference Figure 05: risk gating buys real benchmark savings", fontsize=14, fontweight="bold")
+    fig.suptitle("Risk-threshold savings frontier", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -573,7 +598,7 @@ def generate_risk_stratification(
     for bar, count in zip(bars, counts):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.015, f"n={int(count)}", ha="center", fontsize=9)
 
-    fig.suptitle("Conference Figure 06: the risk score actually sorts the hard cases", fontsize=14, fontweight="bold")
+    fig.suptitle("Risk stratification", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -611,7 +636,7 @@ def generate_demo_case_study(path: Path, dpi: int, demo_report: dict[str, object
     for xpos, pred, truth in zip(x, preds, truths):
         ax.text(xpos, max(pred, truth) + 0.04, f"{abs(pred - truth):.3f}", ha="center", fontsize=8.5)
 
-    fig.suptitle("Conference Figure 07: one partial-evaluation case study", fontsize=14, fontweight="bold")
+    fig.suptitle("Qualitative demo case", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -630,7 +655,189 @@ def generate_alpha_validation(path: Path, dpi: int, alpha_rows: list[dict[str, f
     for x, y, alpha in zip(targets, empirical, alphas):
         ax.text(x + 0.005, y + 0.004, f"a={alpha:.2f}", fontsize=9)
 
-    fig.suptitle("Conference Figure 08: conformal coverage across multiple alpha values", fontsize=14, fontweight="bold")
+    fig.suptitle("Conformal alpha validation", fontsize=14, fontweight="bold")
+    save_figure(fig, path, dpi)
+
+
+def generate_component_ablation(path: Path, dpi: int, ablation_rows: list[dict[str, str]]) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.8), constrained_layout=True)
+
+    rank_rows = [
+        {
+            "rank": int(as_float(row["setting"])),
+            "completion_mae": as_float(row["completion_mae"]),
+            "failure_auc": as_float(row["failure_auc"]),
+        }
+        for row in ablation_rows
+        if row["ablation"] == "rank"
+    ]
+    rank_rows.sort(key=lambda row: row["rank"])
+
+    ax = axes[0]
+    ranks = np.asarray([row["rank"] for row in rank_rows], dtype=int)
+    maes = np.asarray([row["completion_mae"] for row in rank_rows], dtype=float)
+    aucs = np.asarray([row["failure_auc"] for row in rank_rows], dtype=float)
+    ax.plot(ranks, maes, color=COLORS["mae"], marker="o", linewidth=2.2, label="Completion MAE")
+    ax.set_xlabel("Latent rank")
+    ax.set_ylabel("Completion MAE", color=COLORS["mae"])
+    ax.tick_params(axis="y", colors=COLORS["mae"], length=0)
+    ax.set_xticks(ranks)
+    style_axis(ax, "Rank sweep")
+
+    ax2 = ax.twinx()
+    ax2.plot(ranks, aucs, color=COLORS["auc"], marker="s", linewidth=2.2, label="Failure AUC")
+    ax2.set_ylabel("Failure AUC", color=COLORS["auc"])
+    ax2.tick_params(axis="y", colors=COLORS["auc"], length=0)
+    ax2.spines["top"].set_visible(False)
+    ax2.grid(False)
+    if len(ranks) > 0:
+        best_rank = ranks[int(np.argmax(aucs))]
+        ax.axvline(best_rank, color=COLORS["gray"], linestyle="--", linewidth=1.1)
+        ax.text(best_rank + 0.05, np.max(maes), f"best AUC at rank {best_rank}", fontsize=9, color=COLORS["muted"])
+
+    feature_rows = [
+        {
+            "subset": row["setting"].replace("_", " "),
+            "failure_auc": as_float(row["failure_auc"]),
+        }
+        for row in ablation_rows
+        if row["ablation"] == "feature_subset"
+    ]
+    order = ["all features", "all minus geometry", "geometry only"]
+    feature_rows.sort(key=lambda row: order.index(row["subset"]))
+
+    ax = axes[1]
+    labels = [row["subset"] for row in feature_rows]
+    values = np.asarray([row["failure_auc"] for row in feature_rows], dtype=float)
+    y = np.arange(len(labels))
+    baseline = values[1] if len(values) > 1 else np.nan
+    ax.hlines(y, baseline, values, color=COLORS["grid"], linewidth=3.0)
+    colors = [COLORS["auc"], COLORS["gold"], COLORS["mae"]]
+    ax.scatter(values, y, s=95, color=colors[: len(y)], zorder=3, edgecolors="white", linewidths=1.2)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    style_axis(ax, "Failure detector feature subsets", xlabel="Failure AUC")
+    for yy, value in zip(y, values):
+        ax.text(value + 0.008, yy, f"{value:.3f}", va="center", fontsize=9)
+    if np.isfinite(baseline):
+        ax.axvline(baseline, linestyle="--", linewidth=1.1, color=COLORS["gray"])
+        ax.text(baseline + 0.004, y[-1] + 0.4, "no-geometry reference", fontsize=9, color=COLORS["muted"])
+
+    fig.suptitle("Geometry-aware detector ablations", fontsize=14, fontweight="bold")
+    save_figure(fig, path, dpi)
+
+
+def generate_manifold_figure(
+    path: Path,
+    dpi: int,
+    projection_rows: list[dict[str, str | float]],
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(13.8, 6.0), constrained_layout=True)
+
+    families = sorted({str(row["family"]) for row in projection_rows if str(row["point_type"]) == "training"})
+    cmap = plt.get_cmap("tab20")
+    family_to_color = {family: cmap(idx % 20) for idx, family in enumerate(families)}
+
+    target_row = next(row for row in projection_rows if str(row["point_type"]) == "target")
+    train_rows = [row for row in projection_rows if str(row["point_type"]) == "training"]
+
+    ax = axes[0]
+    for family in families:
+        family_rows = [row for row in train_rows if str(row["family"]) == family]
+        ax.scatter(
+            [float(row["pc1"]) for row in family_rows],
+            [float(row["pc2"]) for row in family_rows],
+            s=40,
+            alpha=0.78,
+            color=family_to_color[family],
+            edgecolors="white",
+            linewidths=0.4,
+            label=family,
+        )
+    ax.scatter(
+        float(target_row["pc1"]),
+        float(target_row["pc2"]),
+        s=260,
+        marker="*",
+        color=COLORS["red"],
+        edgecolors="black",
+        linewidths=1.0,
+        zorder=10,
+        label="target",
+    )
+    style_axis(ax, "Learned model manifold", xlabel="PC1", ylabel="PC2")
+    ax.annotate(
+        str(target_row["model_name"]).split("/")[-1],
+        (float(target_row["pc1"]), float(target_row["pc2"])),
+        xytext=(9, 8),
+        textcoords="offset points",
+        fontsize=9.5,
+        color=COLORS["ink"],
+    )
+
+    nearest = sorted(
+        train_rows,
+        key=lambda row: math.dist(
+            [float(row["pc1"]), float(row["pc2"])],
+            [float(target_row["pc1"]), float(target_row["pc2"])],
+        ),
+    )[:8]
+    nearest_names = {str(row["model_name"]) for row in nearest}
+
+    ax = axes[1]
+    others = [row for row in train_rows if str(row["model_name"]) not in nearest_names]
+    ax.scatter(
+        [float(row["pc1"]) for row in others],
+        [float(row["pc2"]) for row in others],
+        s=24,
+        alpha=0.20,
+        color=COLORS["gray"],
+        edgecolors="none",
+    )
+    for row in nearest:
+        ax.scatter(
+            float(row["pc1"]),
+            float(row["pc2"]),
+            s=75,
+            color=family_to_color[str(row["family"])],
+            edgecolors="white",
+            linewidths=1.0,
+            zorder=4,
+        )
+        ax.annotate(
+            str(row["model_name"]).split("/")[-1],
+            (float(row["pc1"]), float(row["pc2"])),
+            xytext=(6, 4),
+            textcoords="offset points",
+            fontsize=8.5,
+            color=COLORS["ink"],
+        )
+    ax.scatter(
+        float(target_row["pc1"]),
+        float(target_row["pc2"]),
+        s=300,
+        marker="*",
+        color=COLORS["red"],
+        edgecolors="black",
+        linewidths=1.0,
+        zorder=10,
+    )
+    style_axis(ax, "Target neighborhood", xlabel="PC1", ylabel="PC2")
+    x_target = float(target_row["pc1"])
+    y_target = float(target_row["pc2"])
+    ax.set_xlim(x_target - 0.45, x_target + 0.45)
+    ax.set_ylim(y_target - 0.35, y_target + 0.35)
+
+    handles = [
+        mpl.lines.Line2D([0], [0], marker="o", color="none", markerfacecolor=family_to_color[family], markeredgecolor="white", markersize=7, label=family)
+        for family in families[:8]
+    ]
+    handles.append(
+        mpl.lines.Line2D([0], [0], marker="*", color="none", markerfacecolor=COLORS["red"], markeredgecolor="black", markersize=11, label="target")
+    )
+    ax.legend(handles=handles, frameon=False, bbox_to_anchor=(1.02, 1.0), loc="upper left")
+
+    fig.suptitle("Learned manifold and target placement", fontsize=14, fontweight="bold")
     save_figure(fig, path, dpi)
 
 
@@ -642,12 +849,14 @@ def main() -> None:
     benchmark_metrics = load_benchmark_metrics()
     baseline_rows = load_baseline_rows()
     observed_rows = load_observed_fraction_rows()
+    ablation_rows = load_ablation_rows()
     alpha_rows = load_alpha_rows()
     family_metrics = load_family_summary()
     family_counts = load_family_counts()
     benchmark_coverage = load_benchmark_coverage()
     cost_rows = load_cost_rows()
     demo_report = load_demo_report()
+    projection_rows = load_manifold_projection()
     episode_rows, risk_bins = build_risk_stratification_artifacts(data_dir)
 
     figures = [
@@ -659,6 +868,8 @@ def main() -> None:
         ("06_risk_stratification.png", lambda p: generate_risk_stratification(p, args.dpi, episode_rows, risk_bins)),
         ("07_demo_case_study.png", lambda p: generate_demo_case_study(p, args.dpi, demo_report)),
         ("08_alpha_validation.png", lambda p: generate_alpha_validation(p, args.dpi, alpha_rows)),
+        ("09_geometry_ablation.png", lambda p: generate_component_ablation(p, args.dpi, ablation_rows)),
+        ("10_model_manifold.png", lambda p: generate_manifold_figure(p, args.dpi, projection_rows)),
     ]
 
     print(f"Writing chart-driven conference figures to {out_dir}")
