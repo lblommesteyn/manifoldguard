@@ -4,6 +4,9 @@
 
 The project is aimed at the practical question behind expensive LLM evaluation: if you have only run a few benchmarks, can you forecast the rest of the suite, estimate the risk of being wrong, and decide whether to stop or keep evaluating?
 
+## Writeup:
+[docs/RESULTS.md](docs/RESULTS.md)
+
 ## Why this matters
 
 Running a full benchmark suite across many models is slow and expensive. `manifoldguard` tries to reduce that burden by:
